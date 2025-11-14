@@ -1,1 +1,74 @@
-body{background:#0b1220;color:#e5e7eb;font-family:Inter,Arial;} .container{max-width:1180px;margin:auto;padding:20px;} .card{background:#0f172a;padding:20px;border-radius:12px;color:#e5e7eb;text-decoration:none;}
+:root {
+  /* Cores Principais */
+  --color-dark-bg: #0b1220;
+  --color-card-bg: #0f172a;
+  --color-text-light: #e5e7eb;
+  --color-primary: #3b82f6; /* Azul de Destaque */
+  --color-secondary: #1e293b;
+
+  /* Tipografia */
+  --font-sans: 'Inter', system-ui, -apple-system, Arial, sans-serif;
+
+  /* Espaçamento e Borda */
+  --spacing-base: 1rem;
+  --radius-default: 0.75rem;
+}
+
+/* Reset Básico e Body */
+body {
+  margin: 0;
+  background-color: var(--color-dark-bg);
+  color: var(--color-text-light);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+/* Layout */
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 20px 15px;
+}
+
+/* Grid de Ferramentas */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+/* Cards Modernos */
+.card {
+  background-color: var(--color-card-bg);
+  padding: 20px;
+  border-radius: var(--radius-default);
+  color: var(--color-text-light);
+  text-decoration: none;
+  display: block;
+  
+  /* Profundidade e Interatividade */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; 
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-secondary);
+}
+
+.card:hover {
+  transform: translateY(-5px); 
+  box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-primary); 
+}
+
+.card h3 {
+    margin-top: 0;
+    font-size: 1.25rem;
+    color: var(--color-text-light);
+}
+
+/* Exemplo de Estilo para Ícones (Baseado no HTML sugerido) */
+.tool-icon {
+    font-size: 2.5rem;
+    color: var(--color-primary);
+    margin-bottom: 10px;
+    display: block;
+}
