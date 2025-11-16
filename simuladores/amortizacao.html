@@ -1,1 +1,1015 @@
-<h1>Simulador de Amortização</h1>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Simplão Invest • Amortização de Financiamentos</title>
+  <meta name="description" content="Simule financiamentos com SAC e PRICE, extras por data, extra mensal e exportação CSV/PDF.">
+  <meta name="keywords" content="simulador amortização, price, sac, financiamento, cálculo de parcelas, saldo devedor">
+  <meta name="robots" content="index, follow">
+
+  <meta property="og:title" content="Simulador de Amortização • Simplão Invest">
+  <meta property="og:description" content="Compare SAC e PRICE, amortizações extras, extra mensal e gráfico anual.">
+  <meta property="og:url" content="https://www.calcularinvestimento.com.br/amortizacao.html">
+  <meta property="og:image" content="https://www.calcularinvestimento.com.br/logo.png">
+  <meta property="og:type" content="website">
+
+  <style>
+    :root{
+      --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8;
+      --line:#1f2937; --primary:#2563eb; --primary-700:#1d4ed8; --radius:14px;
+      --tr-check-bg: #1f2937; 
+    }
+    html,body{ margin:0; background:var(--bg); color:var(--text); font-family:Inter,system-ui,Roboto,Arial,sans-serif; }
+    .container{ max-width:1180px; margin:0 auto; padding:18px; }
+    .header{ display:flex; gap:16px; align-items:center; }
+    .brand{ display:flex; gap:12px; align-items:center; }
+    .logo{ width:44px; height:44px; }
+    h1{ margin:0; font-size:1.35rem; }
+    .subtitle{ margin:4px 0 0; font-size:.92rem; color:var(--muted); }
+
+    .grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media(max-width:900px){ .grid{ grid-template-columns:1fr; } }
+
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02) 60%);
+      border:1px solid var(--line); border-radius:var(--radius);
+      padding:16px;
+    }
+
+    label{ display:block; margin:8px 0 6px; color:var(--muted); font-weight:600; font-size:.9rem; }
+    /* Ajustes para a label de checkbox */
+    label.check-tr {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      color: var(--text);
+      font-weight: normal;
+      font-size: .95rem;
+      background: var(--tr-check-bg);
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+    .check-tr input[type="checkbox"] {
+        width: auto;
+        margin-right: 10px;
+        transform: scale(1.2);
+    }
+    .note {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin: -5px 0 10px 0;
+    }
+
+    input,select,button{
+      width:100%; background:#0b1220; border:1px solid var(--line); color:var(--text);
+      padding:10px 12px; border-radius:12px; font-size:.95rem;
+    }
+    button.btn{
+      background:linear-gradient(90deg,var(--primary),var(--primary-700)); font-weight:800;
+      border:0; color:white; margin-top:6px; cursor:pointer;
+    }
+    button.secondary{ background:#0b1220; border:1px solid var(--line); }
+
+    .row{ margin-bottom:14px; }
+    .row.two{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    .metrics{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:12px; }
+    .metric{ border:1px solid var(--line); padding:12px; border-radius:12px; }
+    .label{ color:var(--muted); font-size:.82rem; }
+    .value{ font-size:1.08rem; margin-top:3px; font-weight:800; }
+
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 8px; }
+    .chip{
+      background:#0b1220; border:1px solid var(--line);
+      border-radius:999px; padding:6px 10px; font-size:.85rem; cursor:pointer;
+    }
+
+    table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+    thead th{ background:#0f172a; padding:10px; border-bottom:1px solid var(--line); position:sticky; top:0; }
+    /* Estilos para a rolagem da tabela */
+    .table-wrap {
+      max-height: 440px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    tbody{ display:table-row-group; }
+    tbody tr, thead{ display:table; width:100%; table-layout:fixed; }
+    tbody td{ border-bottom:1px solid var(--line); padding:10px; }
+
+    canvas{ width:100%; height:260px; background:#0b1220; border-radius:12px; border:1px solid var(--line); }
+
+    footer{ text-align:center; color:var(--muted); margin:16px 0 10px; }
+  </style>
+</head>
+
+<body>
+
+<header class="container header">
+  <div class="brand">
+    <img class="logo" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f4b0.svg">
+    <div>
+      <h1>Amortização de Financiamentos</h1>
+      <p class="subtitle">PRICE e SAC • Extras por data • Extra mensal • CSV • PDF</p>
+    </div>
+  </div>
+</header>
+
+<main class="container grid">
+
+  <section class="card">
+    <form id="amortForm">
+
+      <div class="row two">
+        <div>
+          <label for="principal">Valor financiado (R$)</label>
+          <input id="principal" placeholder="R$ 300.000,00" inputmode="numeric" required>
+        </div>
+
+        <div>
+          <label for="periodo">Prazo (meses)</label>
+          <input id="periodo" placeholder="360" inputmode="numeric" required>
+        </div>
+      </div>
+
+      <div class="row two">
+        <div>
+          <label for="tipoTaxa">Tipo da taxa</label>
+          <select id="tipoTaxa" required>
+            <option value="aa" selected>Anual % (a.a)</option>
+            <option value="am">Mensal % (a.m)</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="rate">Taxa de juros (%)</label>
+          <input id="rate" type="text" placeholder="Ex: 7,9347" inputmode="decimal" required>
+        </div>
+      </div>
+      
+      <div class="row">
+        <label class="check-tr">
+          <input type="checkbox" id="usarTR" checked />
+          Aplicar correção da TR (Banco Central) ao saldo devedor
+        </label>
+        <p class="note">Quando ativado, o saldo é corrigido mensalmente antes do cálculo de juros. Requer a data do 1º vencimento.</p>
+      </div>
+
+      <div class="row two">
+        <div>
+          <label for="sistema">Sistema</label>
+          <select id="sistema" required>
+            <option value="price">PRICE</option>
+            <option value="sac">SAC</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="dataInicio">1º vencimento</label>
+          <input id="dataInicio" type="date" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="extraMensal">Extra mensal fixo (R$)</label>
+        <input id="extraMensal" placeholder="R$ 100,00" inputmode="numeric">
+      </div>
+
+      <div class="row">
+        <label>Amortizações extras por data</label>
+
+        <div class="row two">
+          <input id="extraValor" placeholder="R$ 5.000,00" inputmode="numeric">
+          <input id="extraData" type="date">
+        </div>
+
+        <button type="button" class="btn secondary" id="addExtra">Adicionar</button>
+        <div class="chips" id="extrasChips"></div>
+      </div>
+
+      <div class="row">
+        <label for="seguroTaxa">Seguro/tarifas mensais (R$)</label>
+        <input id="seguroTaxa" placeholder="R$ 0,00" inputmode="numeric">
+      </div>
+
+      <button class="btn" type="submit">Calcular</button>
+
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="metrics">
+      <div class="metric"><div class="label">Prestação inicial</div><div class="value" id="prestacaoIni">—</div></div>
+      <div class="metric"><div class="label">Total pago</div><div class="value" id="totalPago">—</div></div>
+      <div class="metric"><div class="label">Total juros</div><div class="value" id="totalJuros">—</div></div>
+      <div class="metric"><div class="label">Meses quitados</div><div class="value" id="mesesQuitados">—</div></div>
+    </div>
+
+    <canvas id="grafico"></canvas>
+
+    <div class="row" style="margin-top:14px; display:flex; gap:10px;">
+      <button class="btn" id="baixarCsv" type="button" style="flex: 1;">Baixar CSV</button>
+      <button class="btn" id="copiarLink" type="button" style="flex: 1;">Copiar link</button>
+      <button class="btn" id="baixarPdf" type="button" style="flex: 1;">Exportar PDF</button>
+    </div>
+
+  </section>
+
+  <section class="card" style="grid-column:1 / -1">
+    <h2 style="margin:0 0 10px">Cronograma de amortização</h2>
+
+    <div class="table-wrap">
+      <table id="tabela">
+        <thead>
+          <tr>
+            <th>Mês</th>
+            <th>Data</th>
+            <th>Prestação (R$)</th>
+            <th>Amortização (R$)</th>
+            <th>Juros (R$)</th>
+            <th>Seguro (R$)</th>
+            <th>Extra (R$)</th>
+            <th>Saldo (R$)</th>
+          </tr>
+        </thead>
+        <tbody></tbody> 
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer class="container">
+  © <span id="ano"></span> Simplão Invest — Ferramentas financeiras gratuitas.
+</footer>
+
+<script>
+// ===================== Utilidades BR =====================
+const fmtBRL = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+const fmtDate = (d) =>
+  new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(d);
+
+function parseBRNumber(str) {
+  if (!str) return 0;
+  const s = String(str)
+    .replace(/[^\d,.-]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  const v = parseFloat(s);
+  return isNaN(v) ? 0 : v;
+}
+
+// ===================== Máscaras =====================
+
+// Máscara de moeda BRL (2 casas)
+function attachBRLMask(el) {
+  if (!el) return;
+
+  el.addEventListener("input", () => {
+    let dg = el.value.replace(/\D/g, "");
+    if (!dg) {
+      el.value = "";
+      return;
+    }
+    dg = dg.substring(0, 13);
+    const val = (parseInt(dg, 10) / 100).toFixed(2);
+    el.value = fmtBRL.format(val);
+  });
+
+  el.addEventListener("blur", () => {
+    const v = parseBRNumber(el.value);
+    el.value = v === 0 ? "" : fmtBRL.format(v);
+  });
+}
+
+/**
+ * Máscara percentual:
+ * - aceita vírgula ou ponto enquanto digita (não trava);
+ * - permite até maxInt dígitos inteiros e maxDec decimais;
+ * - no blur formata com fixedOnBlur casas decimais (padrão: 4).
+ */
+function attachPercentMask(
+  el,
+  { maxInt = 5, maxDec = 6, fixedOnBlur = 4 } = {}
+) {
+  if (!el) return;
+
+  el.addEventListener("input", (e) => {
+    let v = e.target.value;
+
+    // só dígitos, vírgula e ponto
+    v = v.replace(/[^\d.,]/g, "");
+
+    // Se começar com vírgula ou ponto -> "0,"
+    if (v.startsWith(",") || v.startsWith(".")) {
+      v = "0" + v;
+    }
+
+    // garante apenas um separador
+    const firstSep = v.search(/[.,]/);
+    if (firstSep !== -1) {
+      const sep = v[firstSep];
+      let inteiros = v.slice(0, firstSep).replace(/\D/g, "");
+      let decimais = v.slice(firstSep + 1).replace(/\D/g, "");
+
+      inteiros = inteiros.slice(0, maxInt);
+      decimais = decimais.slice(0, maxDec);
+
+      if (decimais.length > 0) {
+        v = `${inteiros}${sep}${decimais}`;
+      } else {
+        v = `${inteiros}${sep}`;
+      }
+    } else {
+      // sem separador: só inteiros
+      v = v.replace(/\D/g, "").slice(0, maxInt);
+    }
+
+    e.target.value = v;
+  });
+
+  el.addEventListener("blur", (e) => {
+    let v = e.target.value.trim();
+    if (!v) return;
+
+    // tira separador no final (ex.: "7," -> "7")
+    v = v.replace(/[,\.]$/, "");
+
+    const num = parseBRNumber(v);
+    if (isNaN(num)) {
+      e.target.value = "";
+      return;
+    }
+
+    if (fixedOnBlur != null) {
+      e.target.value = num.toFixed(fixedOnBlur).replace(".", ",");
+    } else {
+      // mantém quantas casas tiver, só normalizando vírgula
+      e.target.value = String(num).replace(".", ",");
+    }
+  });
+}
+
+// ===================== TR automática (LENDO DO CACHE LOCAL) =====================
+
+/**
+ * Carrega a TR histórica do arquivo local 'tr_historico_cache.json'
+ * e retorna APENAS o mapa filtrado para o período relevante.
+ */
+async function obterTRMensalMapa(dataInicial, dataFinal) {
+  // A URL aponta para o seu arquivo de cache local
+  const urlCache = 'tr_historico_cache.json';
+  
+  // O fetch pode falhar se o arquivo não existir.
+  const resp = await fetch(urlCache);
+  if (!resp.ok) {
+    throw new Error(`Erro ao carregar o cache TR. Verifique se ${urlCache} existe.`);
+  }
+
+  const dadosHistoricos = await resp.json(); // Ex: { "2015-11": 0.001867, ... }
+  const mapaFiltrado = {};
+  
+  // Convertemos as datas de referência para o formato de comparação
+  const dataInicioTs = dataInicial.getTime();
+  const dataFinalTs = dataFinal.getTime();
+
+  // Filtra o cache para o período que o cálculo realmente precisa.
+  for (const chave in dadosHistoricos) {
+    // Chave é "AAAA-MM"
+    const [ano, mes] = chave.split('-').map(Number);
+    // Cria um objeto Date para o primeiro dia do mês na chave (UTC)
+    const dataChave = new Date(Date.UTC(ano, mes - 1, 1)); 
+
+    if (dataChave.getTime() >= dataInicioTs && dataChave.getTime() <= dataFinalTs) {
+      mapaFiltrado[chave] = dadosHistoricos[chave];
+    }
+  }
+
+  return mapaFiltrado;
+}
+
+
+// ===================== Cálculos =====================
+
+function mensalDeAnual(aa) {
+  const a = (aa || 0) / 100;
+  return Math.pow(1 + a, 1 / 12) - 1;
+}
+
+function pmtPrice(P, i, n) {
+  if (i === 0) return P / n;
+  const f = Math.pow(1 + i, n);
+  return (P * (i * f)) / (f - 1);
+}
+
+function monthIndexFromDate(startUTC, whenUTC) {
+  const y1 = startUTC.getUTCFullYear(),
+    m1 = startUTC.getUTCMonth();
+  const y2 = whenUTC.getUTCFullYear(),
+    m2 = whenUTC.getUTCMonth();
+  return (y2 - y1) * 12 + (m2 - m1) + 1;
+}
+
+/**
+ * Agora com TR automática OPCIONAL e média futura:
+ * - mapaTR é { "AAAA-MM": fração } ou null
+ * - mediaTRFutura é usada para meses não encontrados no mapaTR.
+ */
+function gerarCronograma({
+  principal,
+  iMes,
+  nMeses,
+  sistema,
+  extras,
+  extraMensal,
+  seguroTaxa,
+  data0,
+  mapaTR,
+  mediaTRFutura = 0, // NOVO: Média da TR para meses futuros
+}) {
+  const linhas = [];
+  let saldo = principal;
+  let prestacaoFixa =
+    sistema === "price"
+      ? Math.round(pmtPrice(principal, iMes, nMeses) * 100) / 100
+      : 0;
+  const amortConstante =
+    sistema === "sac"
+      ? Math.round((principal / nMeses) * 100) / 100
+      : 0;
+
+  const extrasPorMes = {};
+  (extras || []).forEach((ex) => {
+    const k = ex.mes;
+    extrasPorMes[k] = (extrasPorMes[k] || 0) + ex.valor;
+  });
+
+  let totalJuros = 0,
+    totalPago = 0,
+    mesesExecutados = 0;
+
+  for (let m = 1; m <= nMeses && saldo > 0.005; m++) {
+    const data = data0
+      ? new Date(
+          Date.UTC(
+            data0.getUTCFullYear(),
+            data0.getUTCMonth() + m - 1,
+            data0.getUTCDate()
+          )
+        )
+      : null;
+
+    // === APLICA TR DO MÊS (se existir ou se for futuro com média) AO SALDO ===
+    let trMes = 0;
+    if (data && mapaTR) {
+      const chaveMes = `${data.getUTCFullYear()}-${String(
+        data.getUTCMonth() + 1
+      ).padStart(2, "0")}`;
+      
+      // 1. Tenta obter a TR histórica (mapaTR[chaveMes] existe)
+      trMes = mapaTR[chaveMes];
+      
+      // 2. Se for undefined (mês futuro), usa a média.
+      if (trMes === undefined) {
+        trMes = mediaTRFutura;
+      }
+    }
+    
+    if (trMes !== 0 && trMes !== undefined) {
+      saldo = Math.round(saldo * (1 + trMes) * 100) / 100;
+    }
+
+    const juros = Math.round(saldo * iMes * 100) / 100;
+    let amort = 0,
+      prest = 0,
+      taxas = Math.round(seguroTaxa * 100) / 100;
+
+    if (sistema === "price") {
+      prest = prestacaoFixa + taxas;
+      amort = Math.min(prestacaoFixa - juros, saldo);
+    } else {
+      amort = Math.min(amortConstante, saldo);
+      prest = amort + juros + taxas;
+    }
+
+    const extraAlvo = (extrasPorMes[m] || 0) + (extraMensal || 0);
+    const extra = Math.min(
+      Math.round(extraAlvo * 100) / 100,
+      Math.max(0, saldo - amort)
+    );
+
+    const pagoNoMes = prest + extra;
+    saldo = Math.max(
+      0,
+      Math.round((saldo - amort - extra) * 100) / 100
+    );
+    totalJuros += juros;
+    totalPago += pagoNoMes;
+    mesesExecutados = m;
+
+    linhas.push({
+      mes: m,
+      data: data ? fmtDate(data) : "—",
+      prestacao: prest,
+      amortizacao: amort,
+      juros: juros,
+      taxas: taxas,
+      extra: extra,
+      saldo: saldo,
+    });
+
+    if (saldo <= 0.005) break;
+  }
+
+  return {
+    linhas,
+    totalJuros: Math.round(totalJuros * 100) / 100,
+    totalPago: Math.round(totalPago * 100) / 100,
+    mesesExecutados,
+  };
+}
+
+// ===================== Gráfico anual (Canvas 2D) =====================
+function desenharGraficoAnual(canvas, linhas, data0) {
+  const ctx = canvas.getContext("2d");
+  const W = (canvas.width = canvas.clientWidth * devicePixelRatio);
+  const H = (canvas.height = canvas.clientHeight * devicePixelRatio);
+
+  ctx.clearRect(0, 0, W, H);
+  if (!linhas.length) return;
+
+  const series = {};
+  linhas.forEach((l, idx) => {
+    let ano = "Sem data";
+    if (data0) {
+      const d = new Date(
+        Date.UTC(
+          data0.getUTCFullYear(),
+          data0.getUTCMonth() + idx,
+          data0.getUTCDate()
+        )
+      );
+      ano = d.getUTCFullYear();
+    }
+    series[ano] = series[ano] || { juros: 0, amort: 0 };
+    series[ano].juros += l.juros;
+    series[ano].amort += l.amortizacao + l.extra;
+  });
+
+  const anos = Object.keys(series).map((a) => String(a));
+  const maxV = Math.max(
+    1,
+    ...anos.map((a) => series[a].juros + series[a].amort)
+  );
+
+  const padL = 50 * devicePixelRatio,
+    padB = 28 * devicePixelRatio,
+    padT = 20 * devicePixelRatio;
+  const usableW = W - padL - 20 * devicePixelRatio;
+  const usableH = H - padT - padB;
+  const barW = Math.max(
+    14 * devicePixelRatio,
+    usableW / (anos.length * 1.8)
+  );
+
+  ctx.strokeStyle = "#64748b";
+  ctx.lineWidth = 1 * devicePixelRatio;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, H - padB);
+  ctx.lineTo(W - 20 * devicePixelRatio, H - padB);
+  ctx.stroke();
+
+  anos.forEach((a, i) => {
+    const x = padL + (i + 0.5) * (usableW / anos.length);
+    const hA = (series[a].amort / maxV) * usableH;
+    const hJ = (series[a].juros / maxV) * usableH;
+
+    ctx.fillStyle = "#22d3ee";
+    ctx.fillRect(x - barW / 2, H - padB - hA, barW, hA);
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(x - barW / 2, H - padB - hA - hJ, barW, hJ);
+
+    ctx.fillStyle = "#cbd5e1";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.font = `${12 * devicePixelRatio}px sans-serif`;
+    ctx.fillText(a, x, H - padB + 6 * devicePixelRatio);
+  });
+}
+
+// ===================== CSV, Link e PDF =====================
+function toCSV(linhas) {
+  const header = [
+    "Mes",
+    "Data",
+    "Prestacao",
+    "Amortizacao",
+    "Juros",
+    "Taxas",
+    "Extra",
+    "Saldo",
+  ];
+  const rows = linhas.map((l) => [
+    l.mes,
+    l.data,
+    l.prestacao.toFixed(2),
+    l.amortizacao.toFixed(2),
+    l.juros.toFixed(2),
+    l.taxas.toFixed(2),
+    l.extra.toFixed(2),
+    l.saldo.toFixed(2),
+  ]);
+  const csv =
+    [header.join(";")].concat(rows.map((r) => r.join(";"))).join("\n");
+  return new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+}
+
+function copiarLink(params) {
+  const url = new URL(location.href);
+  Object.entries(params).forEach(([k, v]) =>
+    url.searchParams.set(k, String(v))
+  );
+  navigator.clipboard.writeText(url.toString());
+  alert("Link copiado!");
+}
+
+function exportarPDF() {
+  window.print();
+}
+
+// ===================== Controle da UI =====================
+const $ = (sel) => document.querySelector(sel);
+
+// Referências aos elementos do HTML
+const el = {
+  form: $("#amortForm"),
+  principal: $("#principal"),
+  periodo: $("#periodo"),
+  sistema: $("#sistema"),
+  tipoTaxa: $("#tipoTaxa"),
+  dataInicio: $("#dataInicio"),
+  rate: $("#rate"),
+  extraMensal: $("#extraMensal"),
+  extraValor: $("#extraValor"),
+  extraData: $("#extraData"),
+  addExtra: $("#addExtra"),
+  extrasChips: $("#extrasChips"),
+  seguroTaxa: $("#seguroTaxa"),
+  prestacaoIni: $("#prestacaoIni"),
+  totalPago: $("#totalPago"),
+  totalJuros: $("#totalJuros"),
+  mesesQuitados: $("#mesesQuitados"),
+  tabela: $("#tabela tbody"), 
+  grafico: $("#grafico"),
+  baixarCsv: $("#baixarCsv"),
+  copiarLinkBtn: $("#copiarLink"),
+  baixarPdf: $("#baixarPdf"),
+  usarTR: $("#usarTR"),
+};
+
+// Aplicação das Máscaras
+["#principal", "#seguroTaxa", "#extraValor", "#extraMensal"].forEach(
+  (sel) => attachBRLMask($(sel))
+);
+attachPercentMask(el.rate, { maxInt: 5, maxDec: 6, fixedOnBlur: 4 });
+
+const extras = []; // { valor, data, mes }
+
+function renderExtrasChips() {
+  if (!el.extrasChips) return;
+  el.extrasChips.innerHTML = "";
+  extras
+    .sort((a, b) => a.mes - b.mes)
+    .forEach((ex, idx) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = `${fmtDate(ex.data)} • ${fmtBRL.format(
+        ex.valor
+      )}`;
+      chip.title = "Clique para remover";
+      // Usamos .bind(null, idx) para capturar o índice correto no momento do clique
+      chip.onclick = () => {
+        // Remove pelo índice, ajustando a ordem de remoção
+        const idxParaRemover = extras.findIndex(
+          (e) => e.mes === ex.mes && e.valor === ex.valor
+        );
+        if (idxParaRemover > -1) {
+            extras.splice(idxParaRemover, 1);
+            renderExtrasChips();
+        }
+      };
+      el.extrasChips.appendChild(chip);
+    });
+}
+
+if (el.addExtra) {
+  el.addExtra.onclick = () => {
+    const v = parseBRNumber(el.extraValor.value);
+    const dStr = el.extraData.value;
+    if (!(v > 0) || !dStr) {
+      alert("Informe valor e data da amortização.");
+      return;
+    }
+    if (!el.dataInicio.value) {
+      alert(
+        "Defina a Data do 1º vencimento antes de adicionar amortizações."
+      );
+      return;
+    }
+    const [Y, M, D] = dStr.split("-").map(Number);
+    const d = new Date(Date.UTC(Y, M - 1, D));
+
+    const [Y0, M0, D0] = el.dataInicio.value.split("-").map(Number);
+    const d0 = new Date(Date.UTC(Y0, M0 - 1, D0));
+    const mes = monthIndexFromDate(d0, d);
+    if (mes < 1) {
+      alert(
+        "A data da amortização deve ser no mesmo mês do 1º vencimento ou após."
+      );
+      return;
+    }
+    extras.push({ valor: v, data: d, mes });
+    el.extraValor.value = "";
+    el.extraData.value = "";
+    renderExtrasChips();
+  };
+}
+
+function paramsAtuais() {
+  const params = {
+    p: el.principal.value,
+    i: el.rate.value,
+    n: el.periodo.value,
+    sys: el.sistema.value,
+    t: el.tipoTaxa.value,
+    d: el.dataInicio.value,
+    fee: el.seguroTaxa.value,
+    em: el.extraMensal.value,
+    tr: el.usarTR && el.usarTR.checked ? "1" : "0",
+  };
+  extras.forEach((ex, idx) => {
+    const y = ex.data.getUTCFullYear();
+    const m = String(ex.data.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(ex.data.getUTCDate()).padStart(2, "0");
+    params[`ex${idx + 1}`] = `${fmtBRL.format(ex.valor)}@${y}-${m}-${d}`;
+  });
+  return params;
+}
+
+function lerDoQuery() {
+  const url = new URL(location.href);
+  const get = (k, d = "") => url.searchParams.get(k) ?? d;
+
+  el.principal.value = get("p", "");
+  el.rate.value = get("i", "");
+  el.periodo.value = get("n", "");
+  el.sistema.value = get("sys", "price");
+  el.tipoTaxa.value = get("t", "aa");
+  el.dataInicio.value = get("d", "");
+  el.seguroTaxa.value = get("fee", "");
+  el.extraMensal.value = get("em", "");
+
+  const trFlag = get("tr", "0");
+  if (el.usarTR) {
+    el.usarTR.checked = trFlag === "1";
+  }
+
+  const exParams = [...url.searchParams.entries()].filter(([k]) =>
+    /^ex\d+$/.test(k)
+  );
+  extras.length = 0;
+  exParams.forEach(([k, v]) => {
+    const [valStr, dateStr] = v.split("@");
+    const val = parseBRNumber(valStr);
+    const [Y, M, D] = (dateStr || "").split("-").map(Number);
+    if (val > 0 && Y) {
+      const d = new Date(Date.UTC(Y, M - 1, D));
+      if (el.dataInicio.value) {
+        const [Y0, M0, D0] = el.dataInicio.value
+          .split("-")
+          .map(Number);
+        const d0 = new Date(Date.UTC(Y0, M0 - 1, D0));
+        const mes = monthIndexFromDate(d0, d);
+        if (mes >= 1) extras.push({ valor: val, data: d, mes });
+      }
+    }
+  });
+  renderExtrasChips();
+}
+
+// ==== CÁLCULO PRINCIPAL (COM CORREÇÃO DE DATA PARA TR E MÉDIA FUTURA) ====
+async function calcular() {
+  const principal = parseBRNumber(el.principal.value);
+  const taxa = parseBRNumber(el.rate.value);
+  const nMeses = parseInt(el.periodo.value || "0", 10);
+  const sistema = el.sistema.value;
+  const tipoTaxa = el.tipoTaxa.value;
+  const seguroTaxa = parseBRNumber(el.seguroTaxa.value);
+  const extraMensal = parseBRNumber(el.extraMensal.value);
+
+  let data0 = null;
+  if (el.dataInicio.value) {
+    const [Y, M, D] = el.dataInicio.value.split("-").map(Number);
+    if (Y && M && D) {
+      data0 = new Date(Date.UTC(Y, M - 1, D));
+    }
+  }
+
+  if (!(principal > 0) || !(nMeses > 0)) {
+    // Limpa os resultados se os dados de entrada forem inválidos
+    el.tabela.innerHTML = "";
+    el.prestacaoIni.textContent = "R$ 0,00";
+    el.totalPago.textContent = "R$ 0,00";
+    el.totalJuros.textContent = "R$ 0,00";
+    el.mesesQuitados.textContent = "0";
+    desenharGraficoAnual(el.grafico, [], data0);
+    return;
+  }
+
+  const iMes = tipoTaxa === "aa" ? mensalDeAnual(taxa) : taxa / 100;
+
+  // === TR MENSAL AUTOMÁTICA OPCIONAL ===
+  let mapaTR = null;
+  let mediaTRFutura = 0; // Inicializa a média da TR
+  const usarTR = el.usarTR && el.usarTR.checked;
+
+  if (usarTR && data0 && nMeses > 0) {
+    try {
+      // 1. Define a data limite para a busca: O primeiro dia do mês atual (Ex: 01/11/2025)
+      const dataAtual = new Date();
+      const dataLimiteBusca = new Date(Date.UTC(dataAtual.getUTCFullYear(), dataAtual.getUTCMonth(), 1));
+      
+      // 2. Define o limite de busca no passado: 5 anos atrás (Para estabilidade da requisição)
+      const dataLimiteHistoricaGeral = new Date(Date.UTC(dataAtual.getUTCFullYear() - 5, dataAtual.getUTCMonth(), 1));
+      
+      // *** 3. Define a data de início para o cálculo da MÉDIA: 4 anos atrás (Janeiro de 2022) ***
+      const anosMedia = 4;
+      const dataInicioMedia = new Date(Date.UTC(dataAtual.getUTCFullYear() - anosMedia, dataAtual.getUTCMonth(), 1));
+
+      // 4. Define a data de INÍCIO da busca da TR (dataInicioReal):
+      let dataInicioBusca = data0;
+      
+      // Se a data de início do financiamento for FUTURA, a busca começa hoje.
+      if (data0 > dataLimiteBusca) {
+          dataInicioBusca = dataLimiteBusca;
+      }
+      
+      // Se a data de início do financiamento for muito no PASSADO, limitamos a 5 anos atrás.
+      if (dataInicioBusca < dataLimiteHistoricaGeral) {
+          dataInicioBusca = dataLimiteHistoricaGeral;
+      }
+      
+      const dataInicioReal = dataInicioBusca;
+
+      // 5. Define a data final da busca (até o mês atual)
+      const dataFimReal = dataLimiteBusca;
+      
+      
+      if (dataInicioReal < dataFimReal) {
+          console.log(`Buscando TR para dados históricos de ${fmtDate(dataInicioReal)} até ${fmtDate(dataFimReal)}`);
+          
+          // Obtém todo o mapa da TR (do cache local)
+          mapaTR = await obterTRMensalMapa(dataInicioReal, dataFimReal);
+          
+          // *** CÁLCULO DA MÉDIA PARA OS ÚLTIMOS 4 ANOS ***
+          const trValuesParaMedia = [];
+          const dataInicioMediaTs = dataInicioMedia.getTime();
+          
+          // 6. Filtra o mapaTR para incluir apenas os dados desde dataInicioMedia (últimos 4 anos)
+          for (const chave in mapaTR) {
+              const [ano, mes] = chave.split('-').map(Number);
+              const dataMes = new Date(Date.UTC(ano, mes - 1, 1));
+              
+              if (dataMes.getTime() >= dataInicioMediaTs) {
+                  trValuesParaMedia.push(mapaTR[chave]);
+              }
+          }
+
+          // Se houver dados suficientes no período de 4 anos, calcula a média.
+          if (trValuesParaMedia.length > 0) {
+              const totalTR = trValuesParaMedia.reduce((sum, current) => sum + current, 0);
+              mediaTRFutura = totalTR / trValuesParaMedia.length;
+              console.log(`Média da TR dos últimos ${anosMedia} anos para meses futuros: ${(mediaTRFutura * 100).toFixed(4)}%`);
+          } else {
+              // Fallback para 0.05% se não houver dados suficientes no período de 4 anos
+              const TR_ESTIMADA_FUTURO_FRACAO = 0.0005;
+              mediaTRFutura = TR_ESTIMADA_FUTURO_FRACAO;
+              console.warn(`Não há dados de TR suficientes nos últimos ${anosMedia} anos. Usando TR ESTIMADA de ${(mediaTRFutura * 100).toFixed(4)}% como fallback.`);
+          }
+          
+      } else {
+          // Simulação totalmente futura, sem histórico de TR suficiente
+          const TR_ESTIMADA_FUTURO_FRACAO = 0.0005;
+          mediaTRFutura = TR_ESTIMADA_FUTURO_FRACAO; 
+          mapaTR = {}; 
+          console.warn(`Simulação totalmente futura. Usando TR ESTIMADA de ${(mediaTRFutura * 100).toFixed(4)}% para todo o prazo.`);
+      }
+
+    } catch (err) {
+      console.error("Falha ao obter TR (Cache ou API do BCB):", err);
+      mapaTR = null; 
+      mediaTRFutura = 0;
+    }
+  }
+
+  const extrasMes = [];
+  if (data0) {
+    extras.forEach((ex) =>
+      extrasMes.push({ valor: ex.valor, mes: ex.mes, data: ex.data })
+    );
+  }
+
+  const { linhas, totalJuros, totalPago, mesesExecutados } =
+    gerarCronograma({
+      principal,
+      iMes,
+      nMeses,
+      sistema,
+      extras: extrasMes,
+      extraMensal,
+      seguroTaxa,
+      data0,
+      mapaTR,
+      mediaTRFutura, // PASSA A MÉDIA OU A ESTIMATIVA PARA O CÁLCULO
+    });
+
+  if (linhas.length) {
+    el.prestacaoIni.textContent = fmtBRL.format(linhas[0].prestacao);
+    el.totalPago.textContent = fmtBRL.format(totalPago);
+    el.totalJuros.textContent = fmtBRL.format(totalJuros);
+    el.mesesQuitados.textContent = String(mesesExecutados);
+  }
+
+  el.tabela.innerHTML = "";
+  for (const l of linhas) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${l.mes}</td>
+      <td>${l.data}</td>
+      <td>${fmtBRL.format(l.prestacao)}</td>
+      <td>${fmtBRL.format(l.amortizacao)}</td>
+      <td>${fmtBRL.format(l.juros)}</td>
+      <td>${fmtBRL.format(l.taxas)}</td>
+      <td>${fmtBRL.format(l.extra)}</td>
+      <td>${fmtBRL.format(l.saldo)}</td>
+    `;
+    el.tabela.appendChild(tr);
+  }
+
+  desenharGraficoAnual(el.grafico, linhas, data0);
+
+  if (el.baixarCsv) {
+    el.baixarCsv.onclick = () => {
+      const blob = toCSV(linhas);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "amortizacao.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    };
+  }
+
+  if (el.copiarLinkBtn) {
+    el.copiarLinkBtn.onclick = () => copiarLink(paramsAtuais());
+  }
+
+  if (el.baixarPdf) {
+    el.baixarPdf.onclick = () => exportarPDF();
+  }
+}
+
+// Inicialização
+if (el.form) {
+  el.form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await calcular();
+  });
+}
+
+const spanAno = document.querySelector("#ano");
+if (spanAno) spanAno.textContent = String(new Date().getFullYear());
+
+// Roda o lerDoQuery e o cálculo inicial ao carregar a página
+lerDoQuery(); 
+
+// Tenta calcular ao carregar, caso os parâmetros já estejam na URL
+if (new URLSearchParams(location.search).toString().length > 0) {
+    calcular();
+}
+</script>
+
+</body>
+</html>
