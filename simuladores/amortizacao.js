@@ -127,7 +127,9 @@ function attachPercentMask(input, options = {}) {
     e.target.value = v;
   });
 
-  el.addEventListener("blur", (e) => {
+  // OBS: O código original usava 'el' aqui, que não está definido.
+  // Assumindo que 'input' (parâmetro) é o correto.
+  input.addEventListener("blur", (e) => {
     let v = e.target.value.trim();
     if (!v) return;
 
@@ -247,6 +249,7 @@ function gerarCronograma({
     }
     
     if (trMes !== 0 && trMes !== undefined) {
+      // Aplica a correção da TR ao saldo devedor
       saldo = Math.round(saldo * (1 + trMes) * 100) / 100;
     }
 
@@ -257,14 +260,23 @@ function gerarCronograma({
       taxas = Math.round(seguroTaxa * 100) / 100;
 
     if (sistema === "price") {
-      prest = prestacaoFixa + taxas;
-      amort = Math.min(prestacaoFixa - juros, saldo);
+      // Ajusta a prestação para que a amortização seja pelo menos 0, se o juro for maior que a prestação fixa.
+      const amortAlvo = prestacaoFixa - juros;
+      if (amortAlvo <= 0) {
+        // Se juros > prestação fixa, a prestação é coberta só pelos juros (amortização negativa é impossível)
+        prest = juros + taxas;
+        amort = 0;
+      } else {
+        prest = prestacaoFixa + taxas;
+        amort = Math.min(amortAlvo, saldo);
+      }
     } else {
       amort = Math.min(amortConstante, saldo);
       prest = amort + juros + taxas;
     }
 
     const extraAlvo = (extrasPorMes[m] || 0) + (extraMensal || 0);
+    // Garante que o extra não amortize mais do que o saldo restante após a amortização normal
     const extra = Math.min(
       Math.round(extraAlvo * 100) / 100,
       Math.max(0, saldo - amort)
@@ -289,12 +301,16 @@ function gerarCronograma({
       extra: extra,
       saldo: saldo,
     });
-
-    if (saldo <= 0.005) break;
+    
+    // CORREÇÃO: Removemos a quebra antecipada (if (saldo <= 0.005) break;),
+    // o que garante que se houver saldo > 0 a próxima iteração tentará zerar.
+    // Se o saldo já é 0, saímos.
+    if (saldo === 0) break;
   }
 
-  // === Ajuste para saldo residual quando TR ou taxas geram diferença ===
-  if (saldo > 0.01) {
+  // === AJUSTE CORRIGIDO para saldo residual (Ajusta saldos > R$ 0,001) ===
+  // Isso cobre casos onde a correção da TR ou arredondamentos deixaram um valor > 0
+  if (saldo > 0.001) { 
     const jurosResidual = Math.round(saldo * iMes * 100) / 100;
     const parcelaFinal = Math.round((saldo + jurosResidual) * 100) / 100;
 
@@ -326,7 +342,8 @@ function gerarCronograma({
 // ===================== Gráfico anual (Canvas 2D) =====================
 function desenharGraficoAnual(canvas, linhas, data0) {
   const ctx = canvas.getContext("2d");
-  const W = (canvas.width = canvas.clientWidth * devicePixelRatio);
+  // O * devicePixelRatio garante que o gráfico seja nítido em telas de alta resolução
+  const W = (canvas.width = canvas.clientWidth * devicePixelRatio); 
   const H = (canvas.height = canvas.clientHeight * devicePixelRatio);
 
   ctx.clearRect(0, 0, W, H);
@@ -414,6 +431,29 @@ function desenharGraficoAnual(canvas, linhas, data0) {
 async function calcular() {
   // OBS: As funções de leitura de campo dependem de elementos HTML no amortizacao.html
   
+  // NOTE: 'el' não está definido neste script JS. Você deve garantir que 'el' 
+  // seja um objeto que mapeia os IDs dos seus inputs (Ex: el.principal = document.getElementById('principal'))
+
+  // Exemplo de como 'el' deve ser configurado no seu arquivo HTML ou script principal:
+  /*
+    const el = {
+      principal: document.getElementById('principal'),
+      rate: document.getElementById('rate'),
+      periodo: document.getElementById('periodo'),
+      sistema: document.getElementById('sistema'),
+      tipoTaxa: document.getElementById('tipoTaxa'),
+      seguroTaxa: document.getElementById('seguroTaxa'),
+      extraMensal: document.getElementById('extraMensal'),
+      dataInicio: document.getElementById('dataInicio'),
+      usarTR: document.getElementById('usarTR'),
+    };
+  */
+
+  if (typeof el === 'undefined') {
+    console.error("Erro: Objeto 'el' não está definido. Verifique a integração com o HTML.");
+    return;
+  }
+  
   const principal = parseBRNumber(el.principal.value);
   const taxa = parseBRNumber(el.rate.value);
   const nMeses = parseInt(el.periodo.value || "0", 10);
@@ -471,7 +511,9 @@ async function calcular() {
     ));
 
     try {
-      mapaTR = await obterTRMensalMapa(dataInicioMedia, dataFinal);
+      // O mapa precisa ir do início da média (para cálculo) até o final do contrato (para aplicação)
+      const dataParaBuscaCache = new Date(Math.min(dataAtual.getTime(), dataFinal.getTime()));
+      mapaTR = await obterTRMensalMapa(dataInicioMedia, dataParaBuscaCache);
 
       const valoresMedia = [];
       const dataInicioTs = dataInicioMedia.getTime();
@@ -485,6 +527,7 @@ async function calcular() {
         const d = new Date(Date.UTC(ano, mes - 1, 1));
         const ts = d.getTime();
 
+        // Filtra para pegar apenas os valores de TR passados, desde o início da média até o mês atual
         if (ts >= dataInicioTs && ts <= dataAtualTs && typeof mapaTR[chave] === "number") {
           valoresMedia.push(mapaTR[chave]);
         }
@@ -507,6 +550,28 @@ async function calcular() {
       mapaTR = null;
       mediaTRFutura = 0;
     }
+    
+    // Agora ajustamos o mapaTR para incluir os valores futuros
+    // Ele precisa cobrir o período completo do contrato.
+    const mapaTRCompleto = {};
+    for (let m = 0; m < nMeses; m++) {
+        const d = new Date(
+            Date.UTC(
+                data0.getUTCFullYear(),
+                data0.getUTCMonth() + m,
+                1
+            )
+        );
+        const chaveMes = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+        
+        let tr = mapaTR[chaveMes];
+        if (tr === undefined || tr === null) {
+            tr = mediaTRFutura;
+        }
+        
+        mapaTRCompleto[chaveMes] = tr;
+    }
+    mapaTR = mapaTRCompleto;
   }
 
   const { linhas, totalJuros, totalPago, mesesExecutados } = gerarCronograma({
@@ -526,6 +591,9 @@ async function calcular() {
   // - Tabela de cronograma
   // - Resumo de totais
   // - Gráficos etc.
+  
+  console.log(`Cálculo concluído: Total Pago R$ ${fmtBRL.format(totalPago).replace("R$", "").trim()}, Total Juros R$ ${fmtBRL.format(totalJuros).replace("R$", "").trim()}, Meses: ${mesesExecutados}`);
+  // Implementação de updateUI omitida
 }
 
 // Aqui você precisaria amarrar o botão "Calcular" ao método calcular():
