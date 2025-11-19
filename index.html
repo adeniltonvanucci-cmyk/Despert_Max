@@ -2,33 +2,57 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DespertMax oferece ferramentas inteligentes para decisões financeiras: simuladores de amortização, investimentos e controle de gastos." />
+  <meta name="author" content="DespertMax" />
   <title>DespertMax — Clareza e Ação Para Crescer</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="container header">
-    <div class="brand">
-      <img src="logo.svg" class="logo" alt="DespertMax">
+  <header class="container header" role="banner">
+    <div class="brand" aria-label="Identidade visual da DespertMax">
+      <img src="logo.svg" class="logo" alt="Logotipo da DespertMax" />
       <div>
         <h1>DespertMax</h1>
         <p class="subtitle">Clareza e Ação Para Crescer</p>
       </div>
     </div>
+    <nav aria-label="Navegação principal">
+      <ul class="nav-list">
+        <li><a href="#simuladores">Simuladores</a></li>
+      </ul>
+    </nav>
   </header>
 
-  <section class="hero container">
-    <h2>Ferramentas Inteligentes para Decisões Reais</h2>
-    <p class="subtitle">Simuladores modernos para investir, economizar e planejar.</p>
-  </section>
+  <main>
+    <section class="hero container">
+      <h2>Ferramentas Inteligentes para Decisões Reais</h2>
+      <p class="subtitle">Simuladores modernos para investir, economizar e planejar.</p>
+    </section>
 
-  <section class="container grid">
-    <a href="simuladores/amortizacao.html" class="card"><h3>Simulador de Amortização</h3></a>
-    <a href="simuladores/investimento.html" class="card"><h3>Simulador de Investimentos</h3></a>
-    <a href="simuladores/controle-gastos.html" class="card"><h3>Controle de Gastos</h3></a>
-  </section>
+    <section id="simuladores" class="container grid" aria-label="Lista de simuladores financeiros">
+      <article class="card">
+        <a href="simuladores/amortizacao.html">
+          <h3>Simulador de Amortização</h3>
+          <p>Calcule parcelas e entenda o impacto dos juros.</p>
+        </a>
+      </article>
+      <article class="card">
+        <a href="simuladores/investimento.html">
+          <h3>Simulador de Investimentos</h3>
+          <p>Planeje seus rendimentos com clareza e segurança.</p>
+        </a>
+      </article>
+      <article class="card">
+        <a href="simuladores/controle-gastos.html">
+          <h3>Controle de Gastos</h3>
+          <p>Organize seu orçamento e acompanhe despesas.</p>
+        </a>
+      </article>
+    </section>
+  </main>
 
-  <footer class="container footer">
+  <footer class="container footer" role="contentinfo">
     <p>© <span id="ano"></span> DespertMax — Clareza e Ação Para Crescer</p>
   </footer>
 
