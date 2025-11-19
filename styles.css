@@ -1,74 +1,128 @@
 :root {
-  /* Cores Principais */
   --color-dark-bg: #0b1220;
-  --color-card-bg: #0f172a;
-  --color-text-light: #e5e7eb;
-  --color-primary: #3b82f6; /* Azul de Destaque */
+  --color-card-bg: #111827;
+  --color-text-light: #f3f4f6;
+  --color-primary: #3b82f6;
   --color-secondary: #1e293b;
 
-  /* Tipografia */
   --font-sans: 'Inter', system-ui, -apple-system, Arial, sans-serif;
 
-  /* Espaçamento e Borda */
   --spacing-base: 1rem;
   --radius-default: 0.75rem;
 }
 
-/* Reset Básico e Body */
-body {
+/* Reset e Base */
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
   background-color: var(--color-dark-bg);
   color: var(--color-text-light);
   font-family: var(--font-sans);
   line-height: 1.6;
+  font-size: 1rem;
+  scroll-behavior: smooth;
 }
 
 /* Layout */
 .container {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 20px 15px;
+  padding: 2rem 1rem;
 }
 
-/* Grid de Ferramentas */
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  width: 60px;
+  height: auto;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #94a3b8;
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.hero h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.hero .subtitle {
+  font-size: 1.125rem;
+}
+
+/* Grid */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-  margin-top: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
 }
 
-/* Cards Modernos */
+/* Cards */
 .card {
   background-color: var(--color-card-bg);
-  padding: 20px;
+  padding: 1.5rem;
   border-radius: var(--radius-default);
-  color: var(--color-text-light);
   text-decoration: none;
-  display: block;
-  
-  /* Profundidade e Interatividade */
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; 
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--color-secondary);
+  color: var(--color-text-light);
+  border: 1px solid transparent;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
-  transform: translateY(-5px); 
-  box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.4);
-  border-color: var(--color-primary); 
+  transform: translateY(-6px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-primary);
 }
 
 .card h3 {
-    margin-top: 0;
-    font-size: 1.25rem;
-    color: var(--color-text-light);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
 }
 
-/* Exemplo de Estilo para Ícones (Baseado no HTML sugerido) */
+.card p {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+
+/* Ícones */
 .tool-icon {
-    font-size: 2.5rem;
-    color: var(--color-primary);
-    margin-bottom: 10px;
-    display: block;
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+  padding: 2rem 1rem;
+  border-top: 1px solid var(--color-secondary);
 }
