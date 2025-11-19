@@ -135,7 +135,15 @@ body {
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
-
+<nav class="nav">
+  <ul class="nav-list">
+    <li><a href="index.html" class="btn-home">🏠 Início</a></li>
+    <li><a href="sobre-nos.html">Sobre Nós</a></li>
+    <li><a href="guia-investimentos.html">Guia de Investimentos</a></li>
+    <li><a href="termos.html">Termos</a></li>
+    <li><a href="politica-privacidade.html">Privacidade</a></li>
+  </ul>
+</nav>
 .card:hover {
   transform: translateY(-6px);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
@@ -210,3 +218,4 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
