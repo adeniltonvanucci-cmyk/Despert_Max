@@ -1,9 +1,13 @@
+/* ============================
+   VARIÁVEIS GLOBAIS
+============================ */
 :root {
   --color-dark-bg: #0b1220;
   --color-card-bg: #111827;
   --color-text-light: #f3f4f6;
   --color-primary: #3b82f6;
   --color-secondary: #1e293b;
+  --color-muted: #94a3b8;
 
   --font-sans: 'Inter', system-ui, -apple-system, Arial, sans-serif;
 
@@ -11,7 +15,9 @@
   --radius-default: 0.75rem;
 }
 
-/* Reset e Base */
+/* ============================
+   RESET E BASE
+============================ */
 * {
   margin: 0;
   padding: 0;
@@ -27,14 +33,18 @@ body {
   scroll-behavior: smooth;
 }
 
-/* Layout */
+/* ============================
+   CONTAINERS E LAYOUT
+============================ */
 .container {
   max-width: 1180px;
   margin: 0 auto;
   padding: 2rem 1rem;
 }
 
-/* Header */
+/* ============================
+   CABEÇALHO
+============================ */
 .header {
   display: flex;
   align-items: center;
@@ -55,10 +65,38 @@ body {
 
 .subtitle {
   font-size: 1rem;
-  color: #94a3b8;
+  color: var(--color-muted);
 }
 
-/* Hero */
+/* ============================
+   NAVEGAÇÃO
+============================ */
+.nav {
+  margin-top: 1rem;
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0;
+}
+
+.nav-list a {
+  color: var(--color-text-light);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-list a:hover {
+  color: var(--color-primary);
+}
+
+/* ============================
+   HERO
+============================ */
 .hero {
   text-align: center;
   padding: 3rem 1rem;
@@ -74,7 +112,9 @@ body {
   font-size: 1.125rem;
 }
 
-/* Grid */
+/* ============================
+   GRID DE SIMULADORES
+============================ */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -82,7 +122,9 @@ body {
   margin-top: 2rem;
 }
 
-/* Cards */
+/* ============================
+   CARD
+============================ */
 .card {
   background-color: var(--color-card-bg);
   padding: 1.5rem;
@@ -110,7 +152,9 @@ body {
   color: #cbd5e1;
 }
 
-/* Ícones */
+/* ============================
+   ÍCONES
+============================ */
 .tool-icon {
   font-size: 2.5rem;
   color: var(--color-primary);
@@ -118,11 +162,51 @@ body {
   display: block;
 }
 
-/* Footer */
+/* ============================
+   RODAPÉ
+============================ */
 .footer {
   text-align: center;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--color-muted);
   padding: 2rem 1rem;
   border-top: 1px solid var(--color-secondary);
+}
+
+.footer-nav {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.footer-nav a {
+  color: var(--color-muted);
+  text-decoration: none;
+  margin: 0 0.25rem;
+}
+
+.footer-nav a:hover {
+  color: var(--color-primary);
+}
+
+/* ============================
+   RESPONSIVO
+============================ */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nav-list {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .hero h2 {
+    font-size: 1.5rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
