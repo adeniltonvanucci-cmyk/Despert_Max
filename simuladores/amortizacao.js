@@ -127,8 +127,6 @@ function attachPercentMask(input, options = {}) {
     e.target.value = v;
   });
 
-  // OBS: O código original usava 'el' aqui, que não está definido.
-  // Assumindo que 'input' (parâmetro) é o correto.
   input.addEventListener("blur", (e) => {
     let v = e.target.value.trim();
     if (!v) return;
@@ -199,7 +197,7 @@ function gerarCronograma({
   seguroTaxa,
   data0,
   mapaTR,
-  mediaTRFutura = 0, // Adicionado como argumento
+  mediaTRFutura = 0, 
 }) {
   const linhas = [];
   let saldo = principal;
@@ -220,7 +218,11 @@ function gerarCronograma({
     extrasPorMes[ex.mes] = (extrasPorMes[ex.mes] || 0) + ex.valor;
   });
 
-  for (let m = 1; m <= nMeses; m++) {
+  // CORREÇÃO PRINCIPAL: Rodar mais meses para garantir a quitação do saldo corrigido pela TR
+  // Rodamos por nMeses + 100 meses extra (mais de 8 anos) para ter certeza que a dívida será quitada.
+  const maxMeses = nMeses + 100; 
+
+  for (let m = 1; m <= maxMeses; m++) {
     let data = null;
     if (data0) {
       data = new Date(
@@ -260,23 +262,31 @@ function gerarCronograma({
       taxas = Math.round(seguroTaxa * 100) / 100;
 
     if (sistema === "price") {
-      // Ajusta a prestação para que a amortização seja pelo menos 0, se o juro for maior que a prestação fixa.
-      const amortAlvo = prestacaoFixa - juros;
-      if (amortAlvo <= 0) {
-        // Se juros > prestação fixa, a prestação é coberta só pelos juros (amortização negativa é impossível)
-        prest = juros + taxas;
-        amort = 0;
+      
+      const paj = prestacaoFixa;
+      const amortAlvo = paj - juros; 
+      
+      if (amortAlvo < 0) {
+        // Amortização negativa ou nula: saldo corrigido é alto demais.
+        prest = paj + taxas;
+        amort = 0; 
       } else {
-        prest = prestacaoFixa + taxas;
+        // Amortização positiva:
         amort = Math.min(amortAlvo, saldo);
+        prest = paj + taxas;
       }
-    } else {
+
+      // Se a prestação calculada (paj + taxas) não cobrir os juros + taxas (por causa de arredondamento)
+      if (prest < (juros + taxas)) {
+          prest = juros + taxas;
+      }
+      
+    } else { // SAC
       amort = Math.min(amortConstante, saldo);
       prest = amort + juros + taxas;
     }
 
     const extraAlvo = (extrasPorMes[m] || 0) + (extraMensal || 0);
-    // Garante que o extra não amortize mais do que o saldo restante após a amortização normal
     const extra = Math.min(
       Math.round(extraAlvo * 100) / 100,
       Math.max(0, saldo - amort)
@@ -302,14 +312,12 @@ function gerarCronograma({
       saldo: saldo,
     });
     
-    // CORREÇÃO: Removemos a quebra antecipada (if (saldo <= 0.005) break;),
-    // o que garante que se houver saldo > 0 a próxima iteração tentará zerar.
-    // Se o saldo já é 0, saímos.
+    // Se o saldo for zero, saímos do loop
     if (saldo === 0) break;
   }
 
   // === AJUSTE CORRIGIDO para saldo residual (Ajusta saldos > R$ 0,001) ===
-  // Isso cobre casos onde a correção da TR ou arredondamentos deixaram um valor > 0
+  // Garante que o saldo final (se houver por arredondamento) seja quitado e contabilizado
   if (saldo > 0.001) { 
     const jurosResidual = Math.round(saldo * iMes * 100) / 100;
     const parcelaFinal = Math.round((saldo + jurosResidual) * 100) / 100;
@@ -342,7 +350,6 @@ function gerarCronograma({
 // ===================== Gráfico anual (Canvas 2D) =====================
 function desenharGraficoAnual(canvas, linhas, data0) {
   const ctx = canvas.getContext("2d");
-  // O * devicePixelRatio garante que o gráfico seja nítido em telas de alta resolução
   const W = (canvas.width = canvas.clientWidth * devicePixelRatio); 
   const H = (canvas.height = canvas.clientHeight * devicePixelRatio);
 
@@ -429,26 +436,6 @@ function desenharGraficoAnual(canvas, linhas, data0) {
 
 // ==== CÁLCULO PRINCIPAL (COM TR REAL NO PASSADO E MÉDIA DE 4 ANOS NO FUTURO) ====
 async function calcular() {
-  // OBS: As funções de leitura de campo dependem de elementos HTML no amortizacao.html
-  
-  // NOTE: 'el' não está definido neste script JS. Você deve garantir que 'el' 
-  // seja um objeto que mapeia os IDs dos seus inputs (Ex: el.principal = document.getElementById('principal'))
-
-  // Exemplo de como 'el' deve ser configurado no seu arquivo HTML ou script principal:
-  /*
-    const el = {
-      principal: document.getElementById('principal'),
-      rate: document.getElementById('rate'),
-      periodo: document.getElementById('periodo'),
-      sistema: document.getElementById('sistema'),
-      tipoTaxa: document.getElementById('tipoTaxa'),
-      seguroTaxa: document.getElementById('seguroTaxa'),
-      extraMensal: document.getElementById('extraMensal'),
-      dataInicio: document.getElementById('dataInicio'),
-      usarTR: document.getElementById('usarTR'),
-    };
-  */
-
   if (typeof el === 'undefined') {
     console.error("Erro: Objeto 'el' não está definido. Verifique a integração com o HTML.");
     return;
@@ -468,8 +455,7 @@ async function calcular() {
     data0 = new Date(Date.UTC(ano, mes - 1, dia));
   }
 
-  const listaExtras = []; // Aqui você populava de acordo com inputs de amortizações extras por data
-  // (Implementação do preenchimento de "listaExtras" omitida por brevidade)
+  const listaExtras = []; 
 
   if (!principal || !taxa || !nMeses) {
     alert("Preencha valor, taxa e prazo.");
@@ -489,11 +475,8 @@ async function calcular() {
   let mapaTR = null;
   let mediaTRFutura = 0;
 
-  // Só fazemos busca TR se:
-  // 1) usarTR estiver marcado
-  // 2) houver data inicial e nMeses > 0
   if (usarTR && data0 && nMeses > 0) {
-    const dataAtual = new Date(); // "agora" para fins de média futura
+    const dataAtual = new Date(); 
     const dataFinal = new Date(
       Date.UTC(
         data0.getUTCFullYear(),
@@ -502,7 +485,6 @@ async function calcular() {
       )
     );
 
-    // *** Início do período para cálculo da MÉDIA: 4 anos atrás (Ex: 01/11/2021) ***
     const anosMedia = 4;
     const dataInicioMedia = new Date(Date.UTC(
       dataAtual.getUTCFullYear() - anosMedia,
@@ -511,8 +493,7 @@ async function calcular() {
     ));
 
     try {
-      // O mapa precisa ir do início da média (para cálculo) até o final do contrato (para aplicação)
-      const dataParaBuscaCache = new Date(Math.min(dataAtual.getTime(), dataFinal.getTime()));
+      const dataParaBuscaCache = new Date(Math.max(dataAtual.getTime(), dataFinal.getTime()));
       mapaTR = await obterTRMensalMapa(dataInicioMedia, dataParaBuscaCache);
 
       const valoresMedia = [];
@@ -527,7 +508,6 @@ async function calcular() {
         const d = new Date(Date.UTC(ano, mes - 1, 1));
         const ts = d.getTime();
 
-        // Filtra para pegar apenas os valores de TR passados, desde o início da média até o mês atual
         if (ts >= dataInicioTs && ts <= dataAtualTs && typeof mapaTR[chave] === "number") {
           valoresMedia.push(mapaTR[chave]);
         }
@@ -551,10 +531,10 @@ async function calcular() {
       mediaTRFutura = 0;
     }
     
-    // Agora ajustamos o mapaTR para incluir os valores futuros
-    // Ele precisa cobrir o período completo do contrato.
+    // Ajustamos o mapaTR para incluir os valores futuros
     const mapaTRCompleto = {};
-    for (let m = 0; m < nMeses; m++) {
+    const maxMesesParaMapa = nMeses + 100; // Usa o novo limite de meses
+    for (let m = 0; m < maxMesesParaMapa; m++) {
         const d = new Date(
             Date.UTC(
                 data0.getUTCFullYear(),
@@ -587,13 +567,7 @@ async function calcular() {
     mediaTRFutura,
   });
 
-  // A partir daqui, você atualiza a interface:
-  // - Tabela de cronograma
-  // - Resumo de totais
-  // - Gráficos etc.
-  
   console.log(`Cálculo concluído: Total Pago R$ ${fmtBRL.format(totalPago).replace("R$", "").trim()}, Total Juros R$ ${fmtBRL.format(totalJuros).replace("R$", "").trim()}, Meses: ${mesesExecutados}`);
-  // Implementação de updateUI omitida
 }
 
 // Aqui você precisaria amarrar o botão "Calcular" ao método calcular():
