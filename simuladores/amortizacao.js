@@ -201,10 +201,13 @@ function gerarCronograma({
 }) {
   const linhas = [];
   let saldo = principal;
-  let prestacaoFixa =
+  
+  // Renomeado para pajInicial, pois será o valor base para a correção mensal da parcela
+  const pajInicial =
     sistema === "price"
       ? Math.round(pmtPrice(principal, iMes, nMeses) * 100) / 100
       : 0;
+      
   let amortConstante =
     sistema === "sac" ? Math.round((principal / nMeses) * 100) / 100 : 0;
 
@@ -218,7 +221,6 @@ function gerarCronograma({
     extrasPorMes[ex.mes] = (extrasPorMes[ex.mes] || 0) + ex.valor;
   });
 
-  // Aumentamos o limite para garantir que a dívida corrigida pela TR seja quitada.
   const maxMeses = nMeses + 100; 
 
   for (let m = 1; m <= maxMeses; m++) {
@@ -249,8 +251,8 @@ function gerarCronograma({
       }
     }
     
+    // A correção da TR no saldo ocorre antes do cálculo dos juros
     if (trMes !== 0 && trMes !== undefined) {
-      // Aplica a correção da TR ao saldo devedor
       saldo = Math.round(saldo * (1 + trMes) * 100) / 100;
     }
 
@@ -262,21 +264,23 @@ function gerarCronograma({
 
     if (sistema === "price") {
       
-      const paj = prestacaoFixa;
+      // *** CORREÇÃO: Aplica a correção da TR diretamente no componente PAJ da parcela ***
+      let pajCorrigido = pajInicial;
+      if (trMes !== 0 && trMes !== undefined) {
+         pajCorrigido = Math.round(pajInicial * (1 + trMes) * 100) / 100;
+      }
       
-      // Amortização Alvo: PAJ - Juros
-      const amortAlvo = paj - juros; 
+      const amortAlvo = pajCorrigido - juros; 
       
-      if (amortAlvo < 0) {
-        // CORREÇÃO DA PARCELA: Se os juros (sobre o saldo corrigido) excederem
-        // a prestação fixa original, a prestação é CORRIGIDA para cobrir os juros + taxas, 
-        // mantendo a amortização em zero. Isso força o aumento do totalPago.
+      if (amortAlvo <= 0) {
+        // Se a correção do PAJ ainda não for suficiente para cobrir os juros,
+        // a parcela é ajustada para cobrir os juros + taxas, mantendo amortização zero.
         prest = juros + taxas; 
         amort = 0; 
       } else {
-        // Amortização positiva: utiliza a prestação fixa original
+        // Amortização positiva: utiliza a PAJ corrigida + taxas
         amort = Math.min(amortAlvo, saldo);
-        prest = paj + taxas;
+        prest = pajCorrigido + taxas;
       }
 
       // Se o saldo for quase zero, a prestação final deve ser ajustada para zerar o saldo
@@ -286,6 +290,12 @@ function gerarCronograma({
       }
       
     } else { // SAC
+      // No SAC, a amortização constante também deve ser corrigida pela TR se a PAJ for corrigida.
+      // Assumindo que o SAC tradicional não corrige a amortização constante, apenas o juro.
+      // Mas se o saldo é corrigido, o amortConstante deve ser ajustado para o novo prazo.
+      // Para manter a simplicidade e a expectativa do usuário (apenas correção Price), 
+      // manteremos a lógica SAC original, pois o foco é o Price.
+      
       amort = Math.min(amortConstante, saldo);
       prest = amort + juros + taxas;
     }
@@ -302,7 +312,7 @@ function gerarCronograma({
       Math.round((saldo - amort - extra) * 100) / 100
     );
     totalJuros += juros;
-    totalPago += pagoNoMes;
+    totalPago += pagoNoMes; // Total Pago agora soma as prestações CORRIGIDAS
     mesesExecutados = m;
 
     linhas.push({
@@ -320,7 +330,7 @@ function gerarCronograma({
     if (saldo === 0) break;
   }
 
-  // === AJUSTE para saldo residual (Ajusta saldos > R$ 0,001) ===
+  // === AJUSTE para saldo residual ===
   if (saldo > 0.001) { 
     const jurosResidual = Math.round(saldo * iMes * 100) / 100;
     const parcelaFinal = Math.round((saldo + jurosResidual) * 100) / 100;
@@ -496,7 +506,7 @@ async function calcular() {
     ));
 
     try {
-      const maxMesesParaMapa = nMeses + 100; // Usa o novo limite de meses
+      const maxMesesParaMapa = nMeses + 100; 
       const dataFinalMapa = new Date(
           Date.UTC(
               data0.getUTCFullYear(),
