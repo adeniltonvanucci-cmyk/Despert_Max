@@ -137,37 +137,58 @@ function attachPercentMask(input, options = {}) {
   });
 }
 
-// ===================== Carregamento do cache de TR =====================
-async function obterTRMensalMapa(dataInicial, dataFinal) {
-  // URL do arquivo de cache local
-  const urlCache = "tr_historico_cache.json";
+// ===================== CORREÇÃO: Carregamento e Reestruturação da TR (Formato CSV) =====================
 
-  // Fazemos o fetch do arquivo JSON
-  const resp = await fetch(urlCache);
-  if (!resp.ok) {
-    throw new Error(`Erro ao carregar o cache TR. Verifique se ${urlCache} existe.`);
-  }
-
-  // Lê o conteúdo como JSON
-  const dadosHistoricos = await resp.json();
-
-  // Vamos montar um mapa apenas com os meses dentro do intervalo de interesse.
+/**
+ * Carrega e reestrutura o histórico de TR no formato "dd/mm/aaaa;dd/mm/aaaa;0,0605"
+ * para um mapa que a função gerarCronograma possa usar (chave: AAAA-MM, valor: TR em decimal).
+ */
+async function carregarEReformatarTR(dataInicial, dataFinal) {
+  const urlCache = "tr_historico_cache.json"; // Mantém o nome do arquivo para o fetch
   const mapaFiltrado = {};
-  
-  // Convertemos as datas de referência para o formato de comparação
-  const dataInicioTs = dataInicial.getTime();
-  const dataFinalTs = dataFinal.getTime();
 
-  // Filtra o cache para o período que o cálculo realmente precisa.
-  for (const chave in dadosHistoricos) {
-    // Chave é "AAAA-MM"
-    const [ano, mes] = chave.split('-').map(Number);
-    // Cria um objeto Date para o primeiro dia do mês na chave (UTC)
-    const dataChave = new Date(Date.UTC(ano, mes - 1, 1)); 
-
-    if (dataChave.getTime() >= dataInicioTs && dataChave.getTime() <= dataFinalTs) {
-      mapaFiltrado[chave] = dadosHistoricos[chave];
+  try {
+    const resp = await fetch(urlCache);
+    if (!resp.ok) {
+      throw new Error(`Erro ao carregar cache TR. Verifique se ${urlCache} existe.`);
     }
+
+    // LÊ O CONTEÚDO COMO TEXTO, NÃO COMO JSON
+    const textoHistorico = await resp.text();
+    const linhas = textoHistorico.split('\n');
+
+    // Mês de referência é o mês de INÍCIO da TR
+    const dataInicioTs = dataInicial.getTime();
+    const dataFinalTs = dataFinal.getTime();
+
+    for (const linha of linhas) {
+      const partes = linha.trim().split(';');
+      if (partes.length < 3) continue; // Ignora linhas incompletas ou cabeçalhos
+
+      const [dataInicioStr, , trStr] = partes; // Pega o primeiro e o terceiro campo
+      const trDecimal = parseBRNumber(trStr) / 100; // Converte "0,0605" para 0.000605
+
+      if (trDecimal === 0) continue; // Ignora TR zero
+
+      // Converte a data de início (dd/mm/aaaa) para um objeto Date
+      const [dia, mes, ano] = dataInicioStr.split('/').map(Number);
+      const dataChave = new Date(Date.UTC(ano, mes - 1, dia)); 
+
+      // Se for o primeiro dia do mês, usamos ele como chave AAAA-MM
+      // NOTE: Estamos assumindo que os dados de TR no seu arquivo correspondem a uma data de início que cai no mês de referência.
+      
+      const chaveMes = `${dataChave.getUTCFullYear()}-${String(dataChave.getUTCMonth() + 1).padStart(2, "0")}`;
+
+      if (dataChave.getTime() >= dataInicioTs && dataChave.getTime() <= dataFinalTs) {
+        // Usa apenas o primeiro valor de TR encontrado para aquele AAAA-MM
+        if (mapaFiltrado[chaveMes] === undefined) {
+             mapaFiltrado[chaveMes] = trDecimal;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Falha ao processar histórico de TR:", err);
+    return null;
   }
 
   return mapaFiltrado;
@@ -202,7 +223,6 @@ function gerarCronograma({
   const linhas = [];
   let saldo = principal;
   
-  // Valor base da Parcela de Amortização e Juros (PAJ)
   const pajInicial =
     sistema === "price"
       ? Math.round(pmtPrice(principal, iMes, nMeses) * 100) / 100
@@ -222,12 +242,6 @@ function gerarCronograma({
   });
 
   const maxMeses = nMeses + 100; 
-  
-  // **********************************************
-  // ** SIMULAÇÃO: TR FIXA EM 0.5% a.m. (0.005) **
-  // **********************************************
-  const TR_SIMULADA = 0.005; // 0.5% ao mês. 
-
 
   for (let m = 1; m <= maxMeses; m++) {
     let data = null;
@@ -241,10 +255,22 @@ function gerarCronograma({
       );
     }
 
-    // --- TR do mês: USA O VALOR SIMULADO (CORREÇÃO APLICADA AQUI) ---
-    // Mesmo que o mapaTR seja passado, usaremos o simulado para teste
-    let trMes = TR_SIMULADA; 
-
+    // --- TR do mês (real ou média futura) ---
+    let trMes = 0;
+    if (mapaTR) {
+      if (data) {
+        const chaveMes = `${data.getUTCFullYear()}-${String(
+          data.getUTCMonth() + 1
+        ).padStart(2, "0")}`;
+        
+        trMes = mapaTR[chaveMes];
+        if (trMes === undefined || trMes === null) {
+          trMes = mediaTRFutura;
+        }
+      } else {
+        trMes = mediaTRFutura;
+      }
+    }
     
     // A correção da TR no saldo ocorre antes do cálculo dos juros
     if (trMes !== 0 && trMes !== undefined) {
@@ -473,10 +499,71 @@ async function calcular() {
     iMes = taxa / 100;
   }
 
-  // NOTE: O mapa TR é ignorado na função gerarCronograma para usar a TR simulada.
-  const mapaTR = null; 
-  const mediaTRFutura = 0; 
+  // ==========================
+  // Mapa TR e média futura
+  // ==========================
+  let mapaTR = null;
+  let mediaTRFutura = 0;
 
+  if (usarTR && data0 && nMeses > 0) {
+    const dataAtual = new Date(); 
+    const anosMedia = 4;
+    
+    // Calcula o período de busca (do início do empréstimo até o final)
+    const dataFinal = new Date(
+      Date.UTC(
+        data0.getUTCFullYear(),
+        data0.getUTCMonth() + (nMeses + 100), // Max meses
+        data0.getUTCDate()
+      )
+    );
+    
+    // Data inicial para buscar histórico (para média)
+    const dataInicioMedia = new Date(Date.UTC(
+      dataAtual.getUTCFullYear() - anosMedia,
+      dataAtual.getUTCMonth(),
+      1
+    ));
+
+    try {
+      // Usa a nova função que processa o CSV/PT-BR
+      mapaTR = await carregarEReformatarTR(dataInicioMedia, dataFinal);
+
+      if (mapaTR) {
+        const valoresMedia = [];
+        const dataInicioTs = dataInicioMedia.getTime();
+        const dataAtualTs = dataAtual.getTime();
+
+        for (const chave in mapaTR) {
+          const [anoStr, mesStr] = chave.split("-");
+          const d = new Date(Date.UTC(parseInt(anoStr), parseInt(mesStr) - 1, 1));
+          const ts = d.getTime();
+
+          // Filtra para pegar apenas os valores de TR passados, desde o início da média até o mês atual
+          if (ts >= dataInicioTs && ts <= dataAtualTs) {
+            valoresMedia.push(mapaTR[chave]);
+          }
+        }
+
+        if (valoresMedia.length > 0) {
+          const soma = valoresMedia.reduce((acc, v) => acc + v, 0);
+          mediaTRFutura = soma / valoresMedia.length;
+        } else {
+          mediaTRFutura = 0;
+        }
+
+        console.log(
+          `Média da TR dos últimos ${anosMedia} anos para meses futuros: ${
+            (mediaTRFutura * 100).toFixed(5)
+          }% a.m.`
+        );
+      }
+    } catch (err) {
+      console.error("Falha ao processar TR:", err);
+      mapaTR = null;
+      mediaTRFutura = 0;
+    }
+  }
 
   const { linhas, totalJuros, totalPago, mesesExecutados } = gerarCronograma({
     principal,
