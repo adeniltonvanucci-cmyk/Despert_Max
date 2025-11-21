@@ -218,8 +218,7 @@ function gerarCronograma({
     extrasPorMes[ex.mes] = (extrasPorMes[ex.mes] || 0) + ex.valor;
   });
 
-  // CORREÇÃO PRINCIPAL: Rodar mais meses para garantir a quitação do saldo corrigido pela TR
-  // Rodamos por nMeses + 100 meses extra (mais de 8 anos) para ter certeza que a dívida será quitada.
+  // Aumentamos o limite para garantir que a dívida corrigida pela TR seja quitada.
   const maxMeses = nMeses + 100; 
 
   for (let m = 1; m <= maxMeses; m++) {
@@ -264,21 +263,26 @@ function gerarCronograma({
     if (sistema === "price") {
       
       const paj = prestacaoFixa;
+      
+      // Amortização Alvo: PAJ - Juros
       const amortAlvo = paj - juros; 
       
       if (amortAlvo < 0) {
-        // Amortização negativa ou nula: saldo corrigido é alto demais.
-        prest = paj + taxas;
+        // CORREÇÃO DA PARCELA: Se os juros (sobre o saldo corrigido) excederem
+        // a prestação fixa original, a prestação é CORRIGIDA para cobrir os juros + taxas, 
+        // mantendo a amortização em zero. Isso força o aumento do totalPago.
+        prest = juros + taxas; 
         amort = 0; 
       } else {
-        // Amortização positiva:
+        // Amortização positiva: utiliza a prestação fixa original
         amort = Math.min(amortAlvo, saldo);
         prest = paj + taxas;
       }
 
-      // Se a prestação calculada (paj + taxas) não cobrir os juros + taxas (por causa de arredondamento)
-      if (prest < (juros + taxas)) {
-          prest = juros + taxas;
+      // Se o saldo for quase zero, a prestação final deve ser ajustada para zerar o saldo
+      if (saldo <= amort) {
+          amort = saldo;
+          prest = amort + juros + taxas;
       }
       
     } else { // SAC
@@ -316,8 +320,7 @@ function gerarCronograma({
     if (saldo === 0) break;
   }
 
-  // === AJUSTE CORRIGIDO para saldo residual (Ajusta saldos > R$ 0,001) ===
-  // Garante que o saldo final (se houver por arredondamento) seja quitado e contabilizado
+  // === AJUSTE para saldo residual (Ajusta saldos > R$ 0,001) ===
   if (saldo > 0.001) { 
     const jurosResidual = Math.round(saldo * iMes * 100) / 100;
     const parcelaFinal = Math.round((saldo + jurosResidual) * 100) / 100;
@@ -493,8 +496,16 @@ async function calcular() {
     ));
 
     try {
-      const dataParaBuscaCache = new Date(Math.max(dataAtual.getTime(), dataFinal.getTime()));
-      mapaTR = await obterTRMensalMapa(dataInicioMedia, dataParaBuscaCache);
+      const maxMesesParaMapa = nMeses + 100; // Usa o novo limite de meses
+      const dataFinalMapa = new Date(
+          Date.UTC(
+              data0.getUTCFullYear(),
+              data0.getUTCMonth() + maxMesesParaMapa,
+              data0.getUTCDate()
+          )
+      );
+      
+      mapaTR = await obterTRMensalMapa(dataInicioMedia, dataFinalMapa);
 
       const valoresMedia = [];
       const dataInicioTs = dataInicioMedia.getTime();
@@ -533,7 +544,7 @@ async function calcular() {
     
     // Ajustamos o mapaTR para incluir os valores futuros
     const mapaTRCompleto = {};
-    const maxMesesParaMapa = nMeses + 100; // Usa o novo limite de meses
+    const maxMesesParaMapa = nMeses + 100; 
     for (let m = 0; m < maxMesesParaMapa; m++) {
         const d = new Date(
             Date.UTC(
