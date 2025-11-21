@@ -196,8 +196,8 @@ function gerarCronograma({
   extraMensal,
   seguroTaxa,
   data0,
-  mapaTR, // Mantido, mas ignorado para a simulação
-  mediaTRFutura = 0, // Mantido, mas ignorado para a simulação
+  mapaTR,
+  mediaTRFutura = 0, 
 }) {
   const linhas = [];
   let saldo = principal;
@@ -226,7 +226,7 @@ function gerarCronograma({
   // **********************************************
   // ** SIMULAÇÃO: TR FIXA EM 0.5% a.m. (0.005) **
   // **********************************************
-  const TR_SIMULADA = 0.005; // 0.5% ao mês. Use 0 para testar o cenário sem TR.
+  const TR_SIMULADA = 0.005; // 0.5% ao mês. 
 
 
   for (let m = 1; m <= maxMeses; m++) {
@@ -241,8 +241,10 @@ function gerarCronograma({
       );
     }
 
-    // --- TR do mês: USA O VALOR SIMULADO ---
+    // --- TR do mês: USA O VALOR SIMULADO (CORREÇÃO APLICADA AQUI) ---
+    // Mesmo que o mapaTR seja passado, usaremos o simulado para teste
     let trMes = TR_SIMULADA; 
+
     
     // A correção da TR no saldo ocorre antes do cálculo dos juros
     if (trMes !== 0 && trMes !== undefined) {
@@ -266,7 +268,7 @@ function gerarCronograma({
       const amortAlvo = pajCorrigido - juros; 
       
       if (amortAlvo <= 0) {
-        // Se a correção do PAJ não for suficiente para cobrir os juros.
+        // Se a correção do PAJ ainda não for suficiente para cobrir os juros.
         prest = juros + taxas; 
         amort = 0; 
       } else {
@@ -471,39 +473,10 @@ async function calcular() {
     iMes = taxa / 100;
   }
 
-  let mapaTR = null;
-  let mediaTRFutura = 0;
-  
-  // NOTE: A lógica de busca do mapa TR foi mantida, mas será IGNORADA pela função gerarCronograma
-  // na simulação para garantir que a TR seja positiva.
+  // NOTE: O mapa TR é ignorado na função gerarCronograma para usar a TR simulada.
+  const mapaTR = null; 
+  const mediaTRFutura = 0; 
 
-  if (usarTR && data0 && nMeses > 0) {
-    const dataAtual = new Date(); 
-    const anosMedia = 4;
-    const dataInicioMedia = new Date(Date.UTC(
-      dataAtual.getUTCFullYear() - anosMedia,
-      dataAtual.getUTCMonth(),
-      1
-    ));
-
-    try {
-      const maxMesesParaMapa = nMeses + 100; 
-      const dataFinalMapa = new Date(
-          Date.UTC(
-              data0.getUTCFullYear(),
-              data0.getUTCMonth() + maxMesesParaMapa,
-              data0.getUTCDate()
-          )
-      );
-      
-      mapaTR = await obterTRMensalMapa(dataInicioMedia, dataFinalMapa);
-
-    } catch (err) {
-      console.error("Falha ao obter TR histórica:", err);
-      mapaTR = null;
-      mediaTRFutura = 0;
-    }
-  }
 
   const { linhas, totalJuros, totalPago, mesesExecutados } = gerarCronograma({
     principal,
@@ -514,8 +487,8 @@ async function calcular() {
     extraMensal,
     seguroTaxa,
     data0,
-    mapaTR: null, // Passando NULL para garantir que a TR simulada seja usada
-    mediaTRFutura: 0, // Passando 0 para garantir que a TR simulada seja usada
+    mapaTR,
+    mediaTRFutura,
   });
 
   console.log(`Cálculo concluído: Total Pago R$ ${fmtBRL.format(totalPago).replace("R$", "").trim()}, Total Juros R$ ${fmtBRL.format(totalJuros).replace("R$", "").trim()}, Meses: ${mesesExecutados}`);
