@@ -157,33 +157,30 @@ async function carregarEReformatarTR(dataInicial, dataFinal) {
     const textoHistorico = await resp.text();
     const linhas = textoHistorico.split('\n');
 
-    // Mês de referência é o mês de INÍCIO da TR
-    const dataInicioTs = dataInicial.getTime();
-    const dataFinalTs = dataFinal.getTime();
-
     for (const linha of linhas) {
       const partes = linha.trim().split(';');
       if (partes.length < 3) continue; // Ignora linhas incompletas ou cabeçalhos
 
       const [dataInicioStr, , trStr] = partes; // Pega o primeiro e o terceiro campo
-      const trDecimal = parseBRNumber(trStr) / 100; // Converte "0,0605" para 0.000605
+      
+      // Converte "0,0605" para 0.0605% a.m., depois divide por 100 para decimal (0.000605)
+      const trDecimal = parseBRNumber(trStr) / 100; 
 
-      if (trDecimal === 0) continue; // Ignora TR zero
+      if (trDecimal === 0) continue; // Omitimos valores de TR exatamente zero
 
-      // Converte a data de início (dd/mm/aaaa) para um objeto Date
-      const [dia, mes, ano] = dataInicioStr.split('/').map(Number);
+      // Converte a data de início (dd/mm/aaaa) para um objeto Date (UTC)
+      const dataParts = dataInicioStr.split('/');
+      if (dataParts.length !== 3) continue;
+      
+      const [dia, mes, ano] = dataParts.map(Number);
       const dataChave = new Date(Date.UTC(ano, mes - 1, dia)); 
 
-      // Se for o primeiro dia do mês, usamos ele como chave AAAA-MM
-      // NOTE: Estamos assumindo que os dados de TR no seu arquivo correspondem a uma data de início que cai no mês de referência.
       
       const chaveMes = `${dataChave.getUTCFullYear()}-${String(dataChave.getUTCMonth() + 1).padStart(2, "0")}`;
 
-      if (dataChave.getTime() >= dataInicioTs && dataChave.getTime() <= dataFinalTs) {
-        // Usa apenas o primeiro valor de TR encontrado para aquele AAAA-MM
-        if (mapaFiltrado[chaveMes] === undefined) {
-             mapaFiltrado[chaveMes] = trDecimal;
-        }
+      // Usa apenas o primeiro valor de TR encontrado para aquele AAAA-MM.
+      if (mapaFiltrado[chaveMes] === undefined) {
+          mapaFiltrado[chaveMes] = trDecimal;
       }
     }
   } catch (err) {
@@ -264,6 +261,7 @@ function gerarCronograma({
         ).padStart(2, "0")}`;
         
         trMes = mapaTR[chaveMes];
+        // Se a TR não for encontrada para o mês (futuro), usa a média calculada
         if (trMes === undefined || trMes === null) {
           trMes = mediaTRFutura;
         }
@@ -272,7 +270,7 @@ function gerarCronograma({
       }
     }
     
-    // A correção da TR no saldo ocorre antes do cálculo dos juros
+    // 1. Correção da TR no saldo
     if (trMes !== 0 && trMes !== undefined) {
       saldo = Math.round(saldo * (1 + trMes) * 100) / 100;
     }
@@ -285,7 +283,7 @@ function gerarCronograma({
 
     if (sistema === "price") {
       
-      // Aplica a correção da TR diretamente no componente PAJ da parcela
+      // 2. Aplica a correção da TR diretamente no componente PAJ da parcela
       let pajCorrigido = pajInicial;
       if (trMes !== 0 && trMes !== undefined) {
          pajCorrigido = Math.round(pajInicial * (1 + trMes) * 100) / 100;
@@ -461,7 +459,7 @@ function desenharGraficoAnual(canvas, linhas, data0) {
   });
 }
 
-// ==== CÁLCULO PRINCIPAL (COM TR REAL NO PASSADO E MÉDIA DE 4 ANOS NO FUTURO) ====
+// ==== CÁLCULO PRINCIPAL (COM TR REAL NO PASSADO E MÉDIA DE TR DO CSV NO FUTURO) ====
 async function calcular() {
   if (typeof el === 'undefined') {
     console.error("Erro: Objeto 'el' não está definido. Verifique a integração com o HTML.");
@@ -506,8 +504,6 @@ async function calcular() {
   let mediaTRFutura = 0;
 
   if (usarTR && data0 && nMeses > 0) {
-    const dataAtual = new Date(); 
-    const anosMedia = 4;
     
     // Calcula o período de busca (do início do empréstimo até o final)
     const dataFinal = new Date(
@@ -518,42 +514,23 @@ async function calcular() {
       )
     );
     
-    // Data inicial para buscar histórico (para média)
-    const dataInicioMedia = new Date(Date.UTC(
-      dataAtual.getUTCFullYear() - anosMedia,
-      dataAtual.getUTCMonth(),
-      1
-    ));
-
     try {
-      // Usa a nova função que processa o CSV/PT-BR
-      mapaTR = await carregarEReformatarTR(dataInicioMedia, dataFinal);
+      // Data Inicial para busca (deve começar no início do empréstimo para cobrir todos os meses)
+      mapaTR = await carregarEReformatarTR(data0, dataFinal);
 
       if (mapaTR) {
-        const valoresMedia = [];
-        const dataInicioTs = dataInicioMedia.getTime();
-        const dataAtualTs = dataAtual.getTime();
-
-        for (const chave in mapaTR) {
-          const [anoStr, mesStr] = chave.split("-");
-          const d = new Date(Date.UTC(parseInt(anoStr), parseInt(mesStr) - 1, 1));
-          const ts = d.getTime();
-
-          // Filtra para pegar apenas os valores de TR passados, desde o início da média até o mês atual
-          if (ts >= dataInicioTs && ts <= dataAtualTs) {
-            valoresMedia.push(mapaTR[chave]);
-          }
-        }
-
+        const valoresMedia = Object.values(mapaTR); // Pega todos os valores de TR lidos do arquivo
+        
         if (valoresMedia.length > 0) {
           const soma = valoresMedia.reduce((acc, v) => acc + v, 0);
-          mediaTRFutura = soma / valoresMedia.length;
+          // CORREÇÃO: Média calculada APENAS com os valores encontrados no mapa (do CSV)
+          mediaTRFutura = soma / valoresMedia.length; 
         } else {
           mediaTRFutura = 0;
         }
 
         console.log(
-          `Média da TR dos últimos ${anosMedia} anos para meses futuros: ${
+          `Média da TR para meses futuros (baseada nos dados do CSV): ${
             (mediaTRFutura * 100).toFixed(5)
           }% a.m.`
         );
