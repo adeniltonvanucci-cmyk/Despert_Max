@@ -138,7 +138,7 @@ body {
 <nav class="nav">
   <ul class="nav-list">
     <li><a href="index.html" class="btn-home">🏠 Início</a></li>
-    <li><a href="sobre-nos.html">Sobre Nós</a></li>
+    <li><a href="sobre_nos.html">Sobre Nós</a></li>
     <li><a href="guia-investimentos.html">Guia de Investimentos</a></li>
     <li><a href="termos.html">Termos</a></li>
     <li><a href="politica-privacidade.html">Privacidade</a></li>
@@ -218,4 +218,5 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
 
