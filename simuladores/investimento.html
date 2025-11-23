@@ -1,1 +1,196 @@
-<h1>Simulador de Investimentos</h1>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- SEO básico -->
+  <title>Simulador de Investimentos • Simplão Invest</title>
+  <meta name="description" content="Simulador gratuito de investimentos em renda fixa (CDB, LCI, LCA, Tesouro). Aportes mensais, IR regressivo e resultados claros.">
+  <meta name="keywords" content="simulador de investimentos, CDB, LCI, LCA, Tesouro Direto, renda fixa, cálculo de rendimento, IR regressivo, IOF, aportes mensais">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="Simplão Invest">
+
+  <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
+  <meta property="og:title" content="Simulador de Investimentos • Simplão Invest">
+  <meta property="og:description" content="Simule CDB, LCI, LCA e Tesouro com aportes mensais e veja o rendimento líquido.">
+  <meta property="og:url" content="https://www.calcularinvestimento.com.br/calculo-investimento.html">
+  <meta property="og:image" content="https://www.calcularinvestimento.com.br/logo.png">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Simulador de Investimentos • Simplão Invest">
+  <meta name="twitter:description" content="Simule CDB, LCI, LCA e Tesouro com aportes mensais e veja o rendimento líquido.">
+  <meta name="twitter:image" content="https://www.calcularinvestimento.com.br/logo.png">
+
+  <!-- Favicon e CSS -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="container header">
+    <div class="brand">
+      <img class="logo" src="logo.png" alt="Simplão Invest">
+      <div>
+        <h1>Simulador de Investimentos</h1>
+        <p class="subtitle">Por <strong>Simplão Invest</strong> — 100% gratuito.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container grid">
+    <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+    <section class="card">
+      <h2>Parâmetros</h2>
+
+      <form id="simForm" autocomplete="off" novalidate>
+        <div class="row two">
+          <div>
+            <label for="tipo">Tipo de investimento</label>
+            <select id="tipo">
+              <option value="CDB" selected>CDB</option>
+              <option value="LCI">LCI (isento IR)</option>
+              <option value="LCA">LCA (isento IR)</option>
+              <option value="Tesouro">Tesouro</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="regime">Rentabilidade</label>
+            <select id="regime">
+              <option value="pre" selected>Pré-fixado (a.a.)</option>
+              <option value="pos">% do CDI (pós-fixado)</option>
+              <option value="ipca">IPCA + taxa (a.a.)</option>
+            </select>
+          </div>
+        </div>
+
+     <!-- CAMPOS DINÂMICOS (mostra/oculta pelo data-show-on) -->
+<!-- Pré -->
+<div class="row" data-show-on="pre">
+  <label for="taxaPre">Taxa pré (a.a. %)</label>
+  <input id="taxaPre" type="text" inputmode="decimal" value="0,00" placeholder="Ex: 12,50" aria-label="Taxa pré anual">
+</div>
+
+<!-- Pós (CDI) -->
+<div class="row" data-show-on="pos" style="display:none">
+  <label for="percentCDI">% do CDI (ex: 105)</label>
+  <input id="percentCDI" type="text" inputmode="decimal" value="0,00" placeholder="Ex: 105" aria-label="Percentual do CDI">
+</div>
+
+<div class="row" data-show-on="pos" style="display:none">
+  <label for="cdiAnual">CDI anual (a.a. %)</label>
+  <input id="cdiAnual" type="text" inputmode="decimal" value="13,71" placeholder="Ex: 13,71" aria-label="CDI anual">
+</div>
+
+<!-- IPCA+ -->
+<div class="row" data-show-on="ipca" style="display:none">
+  <label for="ipcaAnual">IPCA anual (a.a. %)</label>
+  <input id="ipcaAnual" type="text" inputmode="decimal" value="0,00" placeholder="Ex: 4,50" aria-label="IPCA anual">
+</div>
+
+<div class="row" data-show-on="ipca" style="display:none">
+  <label for="spread">Taxa fixa (a.a. %)</label>
+  <input id="spread" type="text" inputmode="decimal" value="0,00" placeholder="Ex: 5,00" aria-label="Taxa fixa anual">
+</div>
+
+<fieldset>
+  <legend>Parâmetros da simulação</legend>
+
+  <div class="row two">
+    <div>
+      <label for="aporteInicial">Aporte inicial (R$)</label>
+      <input id="aporteInicial" type="text" inputmode="numeric" value="0,00"
+             placeholder="Ex: R$ 1.000,00" aria-label="Aporte inicial em reais" required>
+    </div>
+    <div>
+      <label for="aporteMensal">Aporte mensal (R$)</label>
+      <input id="aporteMensal" type="text" inputmode="numeric" value="0,00"
+             placeholder="Ex: R$ 200,00" aria-label="Aporte mensal em reais">
+    </div>
+  </div>
+
+  <div class="row two">
+    <div>
+      <label for="prazoMeses">Prazo (meses)</label>
+      <input id="prazoMeses" type="number" min="1" value="0"
+             placeholder="Ex: 24" aria-label="Prazo em meses" required>
+    </div>
+    <div>
+      <label for="iof">Considerar IOF (0–30 dias)</label>
+      <select id="iof" aria-label="Considerar IOF">
+        <option value="nao" selected>Não (simplificado)</option>
+        <option value="sim">Sim (aproximação)</option>
+      </select>
+    </div>
+  </div>
+</fieldset>
+
+<div class="row">
+  <label for="dataInicio">Data de início</label>
+  <input id="dataInicio" type="date" placeholder="dd/mm/aaaa" aria-label="Data de início da simulação">
+</div>
+
+        <button type="submit" class="btn">Calcular</button>
+        <p class="note">CDI de referência: <strong>13,71% a.a.</strong> (atualizado em 07/11/2025)<br>
+  Modelo didático. Indicadores variam; títulos têm regras específicas. Use para estimar e comparar.</p>
+      </form>
+    </section>
+
+    <!-- COLUNA DIREITA: RESULTADOS -->
+    <section class="card">
+      <h2>Resultado</h2>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="label">Saldo final líquido</div>
+          <div class="value" id="saldoLiquido" aria-live="polite">—</div>
+        </div>
+        <div class="metric">
+          <div class="label">Total investido</div>
+          <div class="value" id="totalInvestido">—</div>
+        </div>
+        <div class="metric">
+          <div class="label">Rendimento bruto</div>
+          <div class="value" id="rendimentoBruto">—</div>
+        </div>
+        <div class="metric">
+          <div class="label">Impostos (IR)</div>
+          <div class="value" id="impostos">—</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tabela">
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Data</th>
+              <th>Saldo (R$)</th>
+              <th>Aporte (R$)</th>
+              <th>Juros (R$)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container footer">
+    <p>© <span id="ano"></span> Simplão Invest • Ferramentas gratuitas para decisões financeiras melhores.</p>
+    <p><a href="politica-privacidade.html">Política de Privacidade</a> • <a href="termos.html">Termos de Uso</a></p>
+  </footer>
+
+  <script src="script.js" defer></script>
+<!-- Cloudflare Web Analytics -->
+  <script 
+    defer 
+    src="https://static.cloudflareinsights.com/beacon.min.js" 
+    data-cf-beacon='{"token": "321f3ac3df2e4308a7217d667a9be7fe"}'>
+  </script>
+  <!-- End Cloudflare Web Analytics -->
+</body>
+</html>
