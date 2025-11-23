@@ -17,55 +17,127 @@ function parseBRNumber(str) {
   return Number.isFinite(v) ? v : 0;
 }
 
-// =============== Funções de máscara e formatação ===============
+// =============== Funções de máscara em tempo real ===============
 
-function attachBRLMask(input) {
-  if (!input) return;
+function attachMoneyMask(input, options = {}) {
+  const {
+    allowNegative = false,
+    maxDigits = 12, // antes da vírgula
+  } = options;
+
   input.addEventListener("input", () => {
-    const digits = input.value.replace(/[^\d]/g, "");
-    if (!digits) {
+    let value = input.value;
+
+    // Remove qualquer caractere que não seja dígito ou sinal
+    value = value.replace(/[^\d-]/g, "");
+
+    // Trata sinal negativo
+    let isNegative = false;
+    if (allowNegative && value.startsWith("-")) {
+      isNegative = true;
+      value = value.slice(1);
+    }
+
+    // Remove zeros à esquerda
+    value = value.replace(/^0+(\d)/, "$1");
+
+    if (!value) {
+      input.value = isNegative ? "-" : "";
+      return;
+    }
+
+    // Limita a quantidade de dígitos
+    value = value.slice(0, maxDigits);
+
+    // Garante pelo menos 3 dígitos para formatar em centavos
+    while (value.length < 3) {
+      value = "0" + value;
+    }
+
+    const inteiros = value.slice(0, -2);
+    const centavos = value.slice(-2);
+
+    let formatted = "";
+    let count = 0;
+    for (let i = inteiros.length - 1; i >= 0; i--) {
+      formatted = inteiros[i] + formatted;
+      count++;
+      if (count === 3 && i > 0) {
+        formatted = "." + formatted;
+        count = 0;
+      }
+    }
+
+    formatted = formatted + "," + centavos;
+
+    if (isNegative) {
+      formatted = "-" + formatted;
+    }
+
+    input.value = formatted;
+  });
+
+  input.addEventListener("blur", () => {
+    let value = input.value;
+
+    if (!value || value === "-") {
       input.value = "";
       return;
     }
-    const v = parseInt(digits, 10);
-    const num = v / 100;
-    input.value = fmtBRL.format(num);
+
+    let num = parseBRNumber(value);
+    input.value = fmtBRL.format(num).replace("R$", "").trim();
   });
 }
 
-function attachPercentMask(input) {
-  if (!input) return;
-  input.addEventListener("input", () => {
-    let val = input.value.replace(/[^\d]/g, "");
-    if (!val) {
-      input.value = "";
-      return;
+function attachPercentMask(input, options = {}) {
+  const { maxInt = 3, maxDec = 4 } = options;
+
+  input.addEventListener("input", (e) => {
+    let v = e.target.value;
+
+    // remove tudo que não for dígito, ponto ou vírgula
+    v = v.replace(/[^\d.,]/g, "");
+
+    // se começar com separador, prefixa 0
+    if (/^[.,]/.test(v)) {
+      v = "0" + v;
     }
-    if (val.length > 3) {
-      val = val.slice(0, 3);
+
+    // garante apenas um separador
+    const firstSep = v.search(/[.,]/);
+    if (firstSep !== -1) {
+      const sep = v[firstSep];
+      let inteiros = v.slice(0, firstSep).replace(/\D/g, "");
+      let decimais = v.slice(firstSep + 1).replace(/\D/g, "");
+
+      inteiros = inteiros.slice(0, maxInt);
+      decimais = decimais.slice(0, maxDec);
+
+      if (decimais.length > 0) {
+        v = `${inteiros}${sep}${decimais}`;
+      } else {
+        v = `${inteiros}${sep}`;
+      }
+    } else {
+      // sem separador: só inteiros
+      v = v.replace(/\D/g, "").slice(0, maxInt);
     }
-    const num = parseInt(val, 10);
-    input.value = num.toString().padStart(3, "0");
+
+    e.target.value = v;
+  });
+
+  input.addEventListener("blur", (e) => {
+    let v = e.target.value.trim();
+    if (!v) return;
+
+    // Normaliza vírgula/ponto para vírgula, por exemplo
+    v = v.replace(/\./g, ",");
+    e.target.value = v;
   });
 }
 
-function attachGenericPercentMask(input) {
-  if (!input) return;
-  input.addEventListener("input", () => {
-    const raw = input.value
-      .replace(/[^\d,]/g, "")
-      .replace(/\./g, "")
-      .replace(",", ".");
-    const v = parseFloat(raw);
-    if (!Number.isFinite(v)) {
-      input.value = "";
-      return;
-    }
-    input.value = v.toString().replace(".", ",");
-  });
-}
-
-// =============== TR: Carregamento e Reestruturação ===============
+// ===================== CORREÇÃO: Carregamento e Reestruturação da TR (Formato CSV) =====================
 
 /**
  * Carrega e reestrutura o histórico de TR no formato "dd/mm/aaaa;dd/mm/aaaa;0,0605"
@@ -83,44 +155,33 @@ async function carregarEReformatarTR() {
 
     // LÊ O CONTEÚDO COMO TEXTO, NÃO COMO JSON
     const textoHistorico = await resp.text();
+    const linhas = textoHistorico.split('\n');
 
-    // Divide em linhas
-    const linhas = textoHistorico.split(/\r?\n/).filter((l) => l.trim() !== "");
-
-    // Processa cada linha
     for (const linha of linhas) {
-      // Formato esperado: dataInicial;dataFinal;valorTR
-      const partes = linha.split(";");
-      if (partes.length < 3) continue;
+      const partes = linha.trim().split(';');
+      if (partes.length < 3) continue; // Ignora linhas incompletas ou cabeçalhos
 
-      const dataInicialStr = partes[0].trim(); // dd/mm/aaaa
-      const dataFinalStr = partes[1].trim(); // dd/mm/aaaa
-      const valorTRStr = partes[2].trim().replace(",", ".");
+      const [dataInicioStr, , trStr] = partes; // Pega o primeiro e o terceiro campo
+      
+      // Converte "0,1690" para 0.1690% a.m. e divide por 100 para decimal (0.001690)
+      const trDecimal = parseBRNumber(trStr) / 100; 
 
-      const valorTR = parseFloat(valorTRStr);
-      if (!Number.isFinite(valorTR)) continue;
+      if (trDecimal === 0) continue; 
 
-      const [diaI, mesI, anoI] = dataInicialStr.split("/").map((x) => parseInt(x, 10));
-      const [diaF, mesF, anoF] = dataFinalStr.split("/").map((x) => parseInt(x, 10));
+      // Converte a data de início (dd/mm/aaaa) para um objeto Date (UTC)
+      const dataParts = dataInicioStr.split('/');
+      if (dataParts.length !== 3) continue;
+      
+      const [dia, mes, ano] = dataParts.map(Number);
+      const dataChave = new Date(Date.UTC(ano, mes - 1, dia)); 
 
-      const dataI = new Date(Date.UTC(anoI, mesI - 1, diaI));
-      const dataF = new Date(Date.UTC(anoF, mesF - 1, diaF));
+      
+      // Chave: AAAA-MM (Ex: 2025-01)
+      const chaveMes = `${dataChave.getUTCFullYear()}-${String(dataChave.getUTCMonth() + 1).padStart(2, "0")}`;
 
-      let ano = dataI.getUTCFullYear();
-      let mes = dataI.getUTCMonth() + 1;
-
-      while (
-        ano < dataF.getUTCFullYear() ||
-        (ano === dataF.getUTCFullYear() && mes <= dataF.getUTCMonth() + 1)
-      ) {
-        const chave = `${ano}-${String(mes).padStart(2, "0")}`;
-        mapaFiltrado[chave] = valorTR / 100.0;
-
-        mes++;
-        if (mes > 12) {
-          mes = 1;
-          ano++;
-        }
+      // Usa apenas o primeiro valor de TR encontrado para aquele AAAA-MM.
+      if (mapaFiltrado[chaveMes] === undefined) {
+          mapaFiltrado[chaveMes] = trDecimal;
       }
     }
   } catch (err) {
@@ -130,6 +191,7 @@ async function carregarEReformatarTR() {
 
   return mapaFiltrado;
 }
+
 
 // ===================== Cálculos =====================
 
@@ -154,21 +216,19 @@ function gerarCronograma({
   seguroTaxa,
   data0,
   mapaTR,
-  mediaTRFutura = 0,
+  mediaTRFutura = 0, 
 }) {
   const linhas = [];
   let saldo = principal;
-
-  // Valor base da Parcela de Amortização e Juros (PAJ)
+  
   const pajInicial =
     sistema === "price"
       ? Math.round(pmtPrice(principal, iMes, nMeses) * 100) / 100
       : 0;
-
+      
   let amortConstante =
     sistema === "sac" ? Math.round((principal / nMeses) * 100) / 100 : 0;
 
-  let fatorTRAcum = 1;
   let totalJuros = 0;
   let totalPago = 0;
   let mesesExecutados = 0;
@@ -179,7 +239,7 @@ function gerarCronograma({
     extrasPorMes[ex.mes] = (extrasPorMes[ex.mes] || 0) + ex.valor;
   });
 
-  const maxMeses = nMeses + 100;
+  const maxMeses = nMeses + 100; 
 
   for (let m = 1; m <= maxMeses; m++) {
     let data = null;
@@ -200,9 +260,9 @@ function gerarCronograma({
         const chaveMes = `${data.getUTCFullYear()}-${String(
           data.getUTCMonth() + 1
         ).padStart(2, "0")}`;
-
+        
         trMes = mapaTR[chaveMes];
-
+        
         // Se a TR for indefinida para o mês (futuro), usa a média calculada.
         if (trMes === undefined || trMes === null) {
           trMes = mediaTRFutura;
@@ -211,16 +271,12 @@ function gerarCronograma({
         trMes = mediaTRFutura;
       }
     }
-
-    // Fator acumulado da TR para correção das parcelas PRICE
-    if (trMes !== 0 && trMes !== undefined) {
-      fatorTRAcum =
-        Math.round(fatorTRAcum * (1 + trMes) * 1e12) / 1e12;
-    }
+    
     // 1. Correção da TR no saldo
     if (trMes !== 0 && trMes !== undefined) {
       saldo = Math.round(saldo * (1 + trMes) * 100) / 100;
     }
+
 
     const juros = Math.round(saldo * iMes * 100) / 100;
     let amort = 0,
@@ -228,16 +284,21 @@ function gerarCronograma({
       taxas = Math.round(seguroTaxa * 100) / 100;
 
     if (sistema === "price") {
-      // Parcela base (PAJ) corrigida pelo fator acumulado da TR
-      let pajCorrigido =
-        Math.round(pajInicial * fatorTRAcum * 100) / 100;
-
-      const amortAlvo = pajCorrigido - juros;
-
+      
+      // 2. Aplica a correção da TR diretamente no componente PAJ da parcela
+      let pajCorrigido = pajInicial;
+      
+      // Esta lógica garante que a parcela seja ajustada pela TR (pajCorrigido > pajInicial)
+      if (trMes !== 0 && trMes !== undefined) {
+         pajCorrigido = Math.round(pajInicial * (1 + trMes) * 100) / 100;
+      }
+      
+      const amortAlvo = pajCorrigido - juros; 
+      
       if (amortAlvo <= 0) {
-        // Se a correção da parcela ainda não for suficiente para cobrir os juros
-        prest = juros + taxas;
-        amort = 0;
+        // Se a correção do PAJ ainda não for suficiente para cobrir os juros.
+        prest = juros + taxas; 
+        amort = 0; 
       } else {
         // Amortização positiva: utiliza a PAJ corrigida + taxas
         amort = Math.min(amortAlvo, saldo);
@@ -246,11 +307,11 @@ function gerarCronograma({
 
       // Se o saldo for quase zero, a prestação final deve ser ajustada para zerar o saldo
       if (saldo <= amort) {
-        amort = saldo;
-        prest = amort + juros + taxas;
+          amort = saldo;
+          prest = amort + juros + taxas;
       }
-    } else {
-      // SAC
+      
+    } else { // SAC
       amort = Math.min(amortConstante, saldo);
       prest = amort + juros + taxas;
     }
@@ -276,135 +337,70 @@ function gerarCronograma({
       prestacao: prest,
       amortizacao: amort,
       juros: juros,
+      taxas: taxas,
       extra: extra,
-      totalPagoMes: pagoNoMes,
-      saldoDevedor: saldo,
-      trMes: trMes * 100,
+      saldo: saldo,
     });
-
-    if (saldo <= 0.01 || m >= nMeses) break;
+    
+    // Se o saldo for zero, saímos do loop
+    if (saldo === 0) break;
   }
 
-  totalJuros = Math.round(totalJuros * 100) / 100;
-  totalPago = Math.round(totalPago * 100) / 100;
+  // === AJUSTE para saldo residual ===
+  if (saldo > 0.001) { 
+    const jurosResidual = Math.round(saldo * iMes * 100) / 100;
+    const parcelaFinal = Math.round((saldo + jurosResidual) * 100) / 100;
+
+    linhas.push({
+      mes: mesesExecutados + 1,
+      data: "Saldo residual",
+      prestacao: parcelaFinal,
+      amortizacao: saldo,
+      juros: jurosResidual,
+      taxas: 0,
+      extra: 0,
+      saldo: 0,
+    });
+
+    totalJuros += jurosResidual;
+    totalPago += parcelaFinal;
+    mesesExecutados = mesesExecutados + 1;
+    saldo = 0;
+  }
 
   return {
     linhas,
-    totalJuros,
-    totalPago,
+    totalJuros: Math.round(totalJuros * 100) / 100,
+    totalPago: Math.round(totalPago * 100) / 100,
     mesesExecutados,
   };
 }
 
-// ===================== Renderização da Tabela =====================
-
-function renderTabelaCronograma(linhas, totalJuros, totalPago) {
-  const tbody = document.querySelector("#cronograma-body");
-  const tfoot = document.querySelector("#cronograma-foot");
-  if (!tbody || !tfoot) return;
-
-  tbody.innerHTML = "";
-  tfoot.innerHTML = "";
-
-  linhas.forEach((l) => {
-    const tr = document.createElement("tr");
-
-    const tdMes = document.createElement("td");
-    tdMes.textContent = l.mes;
-    tr.appendChild(tdMes);
-
-    const tdData = document.createElement("td");
-    tdData.textContent = l.data;
-    tr.appendChild(tdData);
-
-    const tdPrest = document.createElement("td");
-    tdPrest.textContent = fmtBRL.format(l.prestacao);
-    tr.appendChild(tdPrest);
-
-    const tdAmort = document.createElement("td");
-    tdAmort.textContent = fmtBRL.format(l.amortizacao);
-    tr.appendChild(tdAmort);
-
-    const tdJuros = document.createElement("td");
-    tdJuros.textContent = fmtBRL.format(l.juros);
-    tr.appendChild(tdJuros);
-
-    const tdExtra = document.createElement("td");
-    tdExtra.textContent = fmtBRL.format(l.extra);
-    tr.appendChild(tdExtra);
-
-    const tdPago = document.createElement("td");
-    tdPago.textContent = fmtBRL.format(l.totalPagoMes);
-    tr.appendChild(tdPago);
-
-    const tdSaldo = document.createElement("td");
-    tdSaldo.textContent = fmtBRL.format(l.saldoDevedor);
-    tr.appendChild(tdSaldo);
-
-    const tdTR = document.createElement("td");
-    tdTR.textContent =
-      l.trMes !== undefined ? `${l.trMes.toFixed(5)}%` : "—";
-    tr.appendChild(tdTR);
-
-    tbody.appendChild(tr);
-  });
-
-  const trFoot = document.createElement("tr");
-
-  const tdLabel = document.createElement("td");
-  tdLabel.colSpan = 3;
-  tdLabel.textContent = "Totais";
-  trFoot.appendChild(tdLabel);
-
-  const tdAmortTot = document.createElement("td");
-  tdAmortTot.textContent = "—";
-  trFoot.appendChild(tdAmortTot);
-
-  const tdJurosTot = document.createElement("td");
-  tdJurosTot.textContent = fmtBRL.format(totalJuros);
-  trFoot.appendChild(tdJurosTot);
-
-  const tdExtraTot = document.createElement("td");
-  tdExtraTot.textContent = "—";
-  trFoot.appendChild(tdExtraTot);
-
-  const tdPagoTot = document.createElement("td");
-  tdPagoTot.textContent = fmtBRL.format(totalPago);
-  trFoot.appendChild(tdPagoTot);
-
-  const tdSaldoFinal = document.createElement("td");
-  tdSaldoFinal.textContent = "R$ 0,00";
-  trFoot.appendChild(tdSaldoFinal);
-
-  const tdTRFoot = document.createElement("td");
-  tdTRFoot.textContent = "—";
-  trFoot.appendChild(tdTRFoot);
-
-  tfoot.appendChild(trFoot);
-}
-
-// ===================== Gráfico =====================
-
-function desenharGrafico(linhas) {
-  const canvas = document.querySelector("#grafico-canvas");
-  if (!canvas || !canvas.getContext) return;
-
+// ===================== Gráfico anual (Canvas 2D) =====================
+function desenharGraficoAnual(canvas, linhas, data0) {
   const ctx = canvas.getContext("2d");
-  const W = canvas.width;
-  const H = canvas.height;
+  const W = (canvas.width = canvas.clientWidth * devicePixelRatio); 
+  const H = (canvas.height = canvas.clientHeight * devicePixelRatio);
 
   ctx.clearRect(0, 0, W, H);
+  if (!linhas.length) return;
 
   const series = {};
   linhas.forEach((l, idx) => {
     let ano = "Sem data";
-    if (l.data && l.data !== "—") {
-      const [dia, mes, anoStr] = l.data.split("/");
-      ano = parseInt(anoStr, 10);
+    if (data0) {
+      const d = new Date(
+        Date.UTC(
+          data0.getUTCFullYear(),
+          data0.getUTCMonth() + idx,
+          data0.getUTCDate()
+        )
+      );
+      ano = d.getUTCFullYear();
     }
     series[ano] = series[ano] || { juros: 0, amort: 0 };
     series[ano].juros += l.juros;
-    series[ano].amort += l.amortizacao;
+    series[ano].amort += l.amortizacao + l.extra;
   });
 
   const anos = Object.keys(series).map((a) => String(a));
@@ -421,30 +417,27 @@ function desenharGrafico(linhas) {
 
   const barW = Math.max(
     14 * devicePixelRatio,
-    usableW / Math.max(anos.length * 1.5, 1)
+    usableW / (anos.length * 1.8)
   );
-  const gap = barW * 0.4;
 
-  ctx.font = `${12 * devicePixelRatio}px system-ui`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
+  ctx.strokeStyle = "#64748b";
+  ctx.lineWidth = 1 * devicePixelRatio;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, H - padB);
+  ctx.lineTo(W - 20 * devicePixelRatio, H - padB);
+  ctx.stroke();
 
-  const baseY = padT + usableH;
+  anos.forEach((a, i) => {
+    const x = padL + (i + 0.5) * (usableW / anos.length);
 
-  anos.forEach((a, idx) => {
-    const x =
-      padL +
-      barW / 2 +
-      idx * (barW + gap);
+    const total = series[a].juros + series[a].amort;
+    const hTotal = (total / maxV) * usableH;
+    const hAmort = (series[a].amort / maxV) * usableH;
 
-    const vAmort = series[a].amort;
-    const vJuros = series[a].juros;
+    const baseY = H - padB;
 
-    const hAmort = (vAmort / maxV) * usableH;
-    const hJuros = (vJuros / maxV) * usableH;
-    const hTotal = hAmort + hJuros;
-
-    ctx.fillStyle = "#0f766e";
+    ctx.fillStyle = "#38bdf8";
     ctx.fillRect(
       x - barW / 2,
       baseY - hAmort,
@@ -462,86 +455,21 @@ function desenharGrafico(linhas) {
 
     ctx.save();
     ctx.fillStyle = "#e2e8f0";
-    ctx.translate(x, baseY + 4 * devicePixelRatio);
-    ctx.rotate((-45 * Math.PI) / 180);
-    ctx.fillText(a, 0, 0);
+    ctx.font = `${10 * devicePixelRatio}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(a, x, baseY + 4 * devicePixelRatio);
     ctx.restore();
   });
-
-  ctx.strokeStyle = "#cbd5f5";
-  ctx.beginPath();
-  ctx.moveTo(padL, padT);
-  ctx.lineTo(padL, baseY);
-  ctx.lineTo(W - 10 * devicePixelRatio, baseY);
-  ctx.stroke();
 }
 
-// ===================== Integração com HTML =====================
-
-const el = (function obterElementos() {
-  const form = document.querySelector("#form-amortizacao");
-  if (!form) return {};
-
-  return {
-    form,
-    principal: form.querySelector("#principal"),
-    rate: form.querySelector("#taxa"),
-    tipoTaxa: form.querySelector("#tipoTaxa"),
-    periodo: form.querySelector("#periodo"),
-    sistema: form.querySelector("#sistema"),
-    dataInicio: form.querySelector("#dataInicio"),
-    seguroTaxa: form.querySelector("#seguroTaxa"),
-    extraMensal: form.querySelector("#extraMensal"),
-    trAtiva: form.querySelector("#trAtiva"),
-    historicoTR: form.querySelector("#historicoTR"),
-  };
-})();
-
-if (Object.keys(el).length > 0) {
-  attachBRLMask(el.principal);
-  attachGenericPercentMask(el.rate);
-  attachBRLMask(el.seguroTaxa);
-  attachBRLMask(el.extraMensal);
-}
-
-// ===================== Leitura da TR (arquivo local convertido em cache) =====================
-
-async function obterMapaTR(mediaUltimosMeses = 12) {
-  const mapaTR = await carregarEReformatarTR();
-  if (!mapaTR) return { mapaTR: null, mediaTRFutura: 0 };
-
-  const chaves = Object.keys(mapaTR).sort();
-  if (chaves.length === 0) {
-    return { mapaTR: null, mediaTRFutura: 0 };
-  }
-
-  const ultimas = chaves.slice(-mediaUltimosMeses);
-
-  let soma = 0;
-  let cont = 0;
-  for (const chave of ultimas) {
-    const v = mapaTR[chave];
-    if (Number.isFinite(v)) {
-      soma += v;
-      cont++;
-    }
-  }
-
-  const media = cont > 0 ? soma / cont : 0;
-
-  return { mapaTR, mediaTRFutura: media };
-}
-
-// ===================== Cálculo principal =====================
-
+// ==== CÁLCULO PRINCIPAL (COM TR REAL NO PASSADO E MÉDIA DE TR DO CSV NO FUTURO) ====
 async function calcular() {
-  if (typeof el === "undefined") {
-    console.error(
-      "Erro: Objeto 'el' não está definido. Verifique a integração com o HTML."
-    );
+  if (typeof el === 'undefined') {
+    console.error("Erro: Objeto 'el' não está definido. Verifique a integração com o HTML.");
     return;
   }
-
+  
   const principal = parseBRNumber(el.principal.value);
   const taxa = parseBRNumber(el.rate.value);
   const nMeses = parseInt(el.periodo.value || "0", 10);
@@ -552,71 +480,62 @@ async function calcular() {
 
   let data0 = null;
   if (el.dataInicio.value) {
-    const [dia, mes, ano] = el.dataInicio.value.split("-").map(Number);
+    const [dia, mes, ano] = el.dataInicio.value.split("/").map(Number);
     data0 = new Date(Date.UTC(ano, mes - 1, dia));
   }
 
+  const listaExtras = []; 
+
   if (!principal || !taxa || !nMeses) {
-    alert("Preencha valor, taxa e prazo corretamente.");
+    alert("Preencha valor, taxa e prazo.");
     return;
   }
 
-  let iMes;
-  if (tipoTaxa === "anual") {
+  const usarTR = el.usarTR && el.usarTR.checked;
+
+  // Converte taxa anual para mensal se necessário
+  let iMes = 0;
+  if (tipoTaxa === "aa") {
     iMes = mensalDeAnual(taxa);
   } else {
-    iMes = (taxa || 0) / 100;
+    iMes = taxa / 100;
   }
 
-  let listaExtras = [];
-
-  const linhasTabela = document.querySelectorAll(
-    "#extras-body tr"
-  );
-  linhasTabela.forEach((tr, idx) => {
-    const tds = tr.querySelectorAll("td");
-    if (tds.length < 3) return;
-
-    const dataStr = tds[0].querySelector("input")?.value;
-    const valorStr = tds[1].querySelector("input")?.value;
-
-    if (!dataStr || !valorStr) return;
-
-    const [ano, mes, dia] = dataStr.split("-").map(Number);
-    const dataEx = new Date(Date.UTC(ano, mes - 1, dia));
-    let diffMeses = 0;
-    if (data0) {
-      diffMeses =
-        (dataEx.getUTCFullYear() - data0.getUTCFullYear()) * 12 +
-        (dataEx.getUTCMonth() - data0.getUTCMonth());
-    }
-
-    if (diffMeses < 0 || diffMeses >= nMeses) return;
-
-    const valorExtra = parseBRNumber(valorStr);
-    if (!valorExtra) return;
-
-    listaExtras.push({
-      data: dataEx,
-      mes: diffMeses + 1,
-      valor: valorExtra,
-    });
-  });
-
+  // ==========================
+  // Mapa TR e média futura
+  // ==========================
   let mapaTR = null;
   let mediaTRFutura = 0;
 
-  if (el.trAtiva.checked) {
+  if (usarTR && data0 && nMeses > 0) {
+    
+    // Define o período de busca máximo (até o final do empréstimo)
+    const dataFinal = new Date(
+      Date.UTC(
+        data0.getUTCFullYear(),
+        data0.getUTCMonth() + (nMeses + 100), // Max meses
+        data0.getUTCDate()
+      )
+    );
+    
     try {
-      const resTR = await obterMapaTR();
-      mapaTR = resTR.mapaTR;
-      mediaTRFutura = resTR.mediaTRFutura;
+      // Carrega todo o CSV para o mapa
+      mapaTR = await carregarEReformatarTR();
 
-      console.log(
-        `Média da TR para meses futuros (baseada nos dados do CSV): ${
-          (mediaTRFutura * 100).toFixed(5)
-        }% a.m.`
-      );
+      if (mapaTR) {
+        const valoresTR = Object.values(mapaTR); // Pega todos os valores de TR lidos do arquivo
+        
+        if (valoresTR.length > 0) {
+          const soma = valoresTR.reduce((acc, v) => acc + v, 0);
+          mediaTRFutura = soma / valoresTR.length; 
+        } else {
+          mediaTRFutura = 0;
+        }
+
+        console.log(
+          `Média da TR para meses futuros (baseada nos dados do CSV): ${(mediaTRFutura * 100).toFixed(5)}% a.m.`
+        );
+      }
     } catch (err) {
       console.error("Falha ao processar TR:", err);
       mapaTR = null;
@@ -624,28 +543,19 @@ async function calcular() {
     }
   }
 
-  const { linhas, totalJuros, totalPago, mesesExecutados } =
-    gerarCronograma({
-      principal,
-      iMes,
-      nMeses,
-      sistema,
-      extras: listaExtras,
-      extraMensal,
-      seguroTaxa,
-      data0,
-      mapaTR,
-      mediaTRFutura,
-    });
+  const { linhas, totalJuros, totalPago, mesesExecutados } = gerarCronograma({
+    principal,
+    iMes,
+    nMeses,
+    sistema,
+    extras: listaExtras,
+    extraMensal,
+    seguroTaxa,
+    data0,
+    mapaTR,
+    mediaTRFutura,
+  });
 
-  renderTabelaCronograma(linhas, totalJuros, totalPago);
-  desenharGrafico(linhas);
-
-  console.log(
-    `Cálculo concluído: Total Pago ${fmtBRL.format(
-      totalPago
-    )}, Juros ${fmtBRL.format(
-      totalJuros
-    )}, Meses: ${mesesExecutados}`
-  );
+  console.log(`Cálculo concluído: Total Pago R$ ${fmtBRL.format(totalPago).replace("R$", "").trim()}, Total Juros R$ ${fmtBRL.format(totalJuros).replace("R$", "").trim()}, Meses: ${mesesExecutados}`);
 }
+
