@@ -163,8 +163,7 @@ async function carregarEReformatarTR() {
 
       const [dataInicioStr, , trStr] = partes; // Pega o primeiro e o terceiro campo
       
-      // Ajuste CRÍTICO: Converte "0,1690" para 0.1690% a.m. e divide por 100 para decimal.
-      // (0.1690 / 100 = 0.001690)
+      // Converte "0,1690" para 0.1690% a.m. e divide por 100 para decimal (0.001690)
       const trDecimal = parseBRNumber(trStr) / 100; 
 
       if (trDecimal === 0) continue; 
@@ -222,6 +221,7 @@ function gerarCronograma({
   const linhas = [];
   let saldo = principal;
   
+  // Valor base da Parcela de Amortização e Juros (PAJ)
   const pajInicial =
     sistema === "price"
       ? Math.round(pmtPrice(principal, iMes, nMeses) * 100) / 100
@@ -289,7 +289,7 @@ function gerarCronograma({
       // 2. Aplica a correção da TR diretamente no componente PAJ da parcela
       let pajCorrigido = pajInicial;
       
-      // Se a TR for > 0, o pajCorrigido DEVE aumentar.
+      // Esta lógica garante que a parcela seja ajustada pela TR (pajCorrigido > pajInicial)
       if (trMes !== 0 && trMes !== undefined) {
          pajCorrigido = Math.round(pajInicial * (1 + trMes) * 100) / 100;
       }
