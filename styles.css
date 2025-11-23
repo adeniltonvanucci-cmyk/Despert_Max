@@ -142,6 +142,7 @@ body {
     <li><a href="guia-investimentos.html">Guia de Investimentos</a></li>
     <li><a href="termos.html">Termos</a></li>
     <li><a href="politica-privacidade.html">Privacidade</a></li>
+    <li><a href="simuladores/investimento.html">Privacidade</a></li>
   </ul>
 </nav>
 .card:hover {
@@ -218,5 +219,6 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
 
 
