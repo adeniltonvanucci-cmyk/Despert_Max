@@ -163,10 +163,11 @@ async function carregarEReformatarTR(dataInicial, dataFinal) {
 
       const [dataInicioStr, , trStr] = partes; // Pega o primeiro e o terceiro campo
       
-      // Converte "0,0605" para 0.0605% a.m., depois divide por 100 para decimal (0.000605)
+      // Ajuste CRÍTICO: Assume que "0,1690" representa 0.1690% a.m., 
+      // então dividimos APENAS por 100 para obter o decimal (ex: 0.001690)
       const trDecimal = parseBRNumber(trStr) / 100; 
 
-      if (trDecimal === 0) continue; // Omitimos valores de TR exatamente zero
+      if (trDecimal === 0) continue; 
 
       // Converte a data de início (dd/mm/aaaa) para um objeto Date (UTC)
       const dataParts = dataInicioStr.split('/');
@@ -515,24 +516,22 @@ async function calcular() {
     );
     
     try {
-      // Data Inicial para busca (deve começar no início do empréstimo para cobrir todos os meses)
+      // Data Inicial para busca é a data de início do empréstimo
       mapaTR = await carregarEReformatarTR(data0, dataFinal);
 
       if (mapaTR) {
-        const valoresMedia = Object.values(mapaTR); // Pega todos os valores de TR lidos do arquivo
+        const valoresTR = Object.values(mapaTR); // Pega todos os valores de TR lidos do arquivo
         
-        if (valoresMedia.length > 0) {
-          const soma = valoresMedia.reduce((acc, v) => acc + v, 0);
-          // CORREÇÃO: Média calculada APENAS com os valores encontrados no mapa (do CSV)
-          mediaTRFutura = soma / valoresMedia.length; 
+        if (valoresTR.length > 0) {
+          const soma = valoresTR.reduce((acc, v) => acc + v, 0);
+          // Média calculada APENAS com os valores encontrados no mapa (do CSV)
+          mediaTRFutura = soma / valoresTR.length; 
         } else {
           mediaTRFutura = 0;
         }
 
         console.log(
-          `Média da TR para meses futuros (baseada nos dados do CSV): ${
-            (mediaTRFutura * 100).toFixed(5)
-          }% a.m.`
+          `Média da TR para meses futuros (baseada nos dados do CSV): ${(mediaTRFutura * 100).toFixed(5)}% a.m.`
         );
       }
     } catch (err) {
@@ -558,5 +557,3 @@ async function calcular() {
   console.log(`Cálculo concluído: Total Pago R$ ${fmtBRL.format(totalPago).replace("R$", "").trim()}, Total Juros R$ ${fmtBRL.format(totalJuros).replace("R$", "").trim()}, Meses: ${mesesExecutados}`);
 }
 
-// Aqui você precisaria amarrar o botão "Calcular" ao método calcular():
-// document.getElementById("btnCalcular").addEventListener("click", calcular);
