@@ -143,7 +143,7 @@ function attachPercentMask(input, options = {}) {
  * Carrega e reestrutura o histórico de TR no formato "dd/mm/aaaa;dd/mm/aaaa;0,0605"
  * para um mapa que a função gerarCronograma possa usar (chave: AAAA-MM, valor: TR em decimal).
  */
-async function carregarEReformatarTR(dataInicial, dataFinal) {
+async function carregarEReformatarTR() {
   const urlCache = "tr_historico_cache.json"; // Mantém o nome do arquivo para o fetch
   const mapaFiltrado = {};
 
@@ -163,8 +163,8 @@ async function carregarEReformatarTR(dataInicial, dataFinal) {
 
       const [dataInicioStr, , trStr] = partes; // Pega o primeiro e o terceiro campo
       
-      // Ajuste CRÍTICO: Assume que "0,1690" representa 0.1690% a.m., 
-      // então dividimos APENAS por 100 para obter o decimal (ex: 0.001690)
+      // Ajuste CRÍTICO: Converte "0,1690" para 0.1690% a.m. e divide por 100 para decimal.
+      // (0.1690 / 100 = 0.001690)
       const trDecimal = parseBRNumber(trStr) / 100; 
 
       if (trDecimal === 0) continue; 
@@ -177,6 +177,7 @@ async function carregarEReformatarTR(dataInicial, dataFinal) {
       const dataChave = new Date(Date.UTC(ano, mes - 1, dia)); 
 
       
+      // Chave: AAAA-MM (Ex: 2025-01)
       const chaveMes = `${dataChave.getUTCFullYear()}-${String(dataChave.getUTCMonth() + 1).padStart(2, "0")}`;
 
       // Usa apenas o primeiro valor de TR encontrado para aquele AAAA-MM.
@@ -262,7 +263,8 @@ function gerarCronograma({
         ).padStart(2, "0")}`;
         
         trMes = mapaTR[chaveMes];
-        // Se a TR não for encontrada para o mês (futuro), usa a média calculada
+        
+        // Se a TR for indefinida para o mês (futuro), usa a média calculada.
         if (trMes === undefined || trMes === null) {
           trMes = mediaTRFutura;
         }
@@ -286,6 +288,8 @@ function gerarCronograma({
       
       // 2. Aplica a correção da TR diretamente no componente PAJ da parcela
       let pajCorrigido = pajInicial;
+      
+      // Se a TR for > 0, o pajCorrigido DEVE aumentar.
       if (trMes !== 0 && trMes !== undefined) {
          pajCorrigido = Math.round(pajInicial * (1 + trMes) * 100) / 100;
       }
@@ -506,7 +510,7 @@ async function calcular() {
 
   if (usarTR && data0 && nMeses > 0) {
     
-    // Calcula o período de busca (do início do empréstimo até o final)
+    // Define o período de busca máximo (até o final do empréstimo)
     const dataFinal = new Date(
       Date.UTC(
         data0.getUTCFullYear(),
@@ -516,15 +520,14 @@ async function calcular() {
     );
     
     try {
-      // Data Inicial para busca é a data de início do empréstimo
-      mapaTR = await carregarEReformatarTR(data0, dataFinal);
+      // Carrega todo o CSV para o mapa
+      mapaTR = await carregarEReformatarTR();
 
       if (mapaTR) {
         const valoresTR = Object.values(mapaTR); // Pega todos os valores de TR lidos do arquivo
         
         if (valoresTR.length > 0) {
           const soma = valoresTR.reduce((acc, v) => acc + v, 0);
-          // Média calculada APENAS com os valores encontrados no mapa (do CSV)
           mediaTRFutura = soma / valoresTR.length; 
         } else {
           mediaTRFutura = 0;
