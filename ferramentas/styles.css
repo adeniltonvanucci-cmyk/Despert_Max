@@ -1,0 +1,224 @@
+/* ============================
+   VARIÁVEIS GLOBAIS
+============================ */
+:root {
+  --color-dark-bg: #0b1220;
+  --color-card-bg: #111827;
+  --color-text-light: #f3f4f6;
+  --color-primary: #3b82f6;
+  --color-secondary: #1e293b;
+  --color-muted: #94a3b8;
+
+  --font-sans: 'Inter', system-ui, -apple-system, Arial, sans-serif;
+
+  --spacing-base: 1rem;
+  --radius-default: 0.75rem;
+}
+
+/* ============================
+   RESET E BASE
+============================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-dark-bg);
+  color: var(--color-text-light);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  font-size: 1rem;
+  scroll-behavior: smooth;
+}
+
+/* ============================
+   CONTAINERS E LAYOUT
+============================ */
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ============================
+   CABEÇALHO
+============================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  width: 60px;
+  height: auto;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--color-muted);
+}
+
+/* ============================
+   NAVEGAÇÃO
+============================ */
+.nav {
+  margin-top: 1rem;
+}
+
+.nav-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0;
+}
+
+.nav-list a {
+  color: var(--color-text-light);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-list a:hover {
+  color: var(--color-primary);
+}
+
+/* ============================
+   HERO
+============================ */
+.hero {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.hero h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.hero .subtitle {
+  font-size: 1.125rem;
+}
+
+/* ============================
+   GRID DE SIMULADORES
+============================ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+/* ============================
+   CARD
+============================ */
+.card {
+  background-color: var(--color-card-bg);
+  padding: 1.5rem;
+  border-radius: var(--radius-default);
+  text-decoration: none;
+  color: var(--color-text-light);
+  border: 1px solid transparent;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+<nav class="nav">
+  <ul class="nav-list">
+    <li><a href="index.html" class="btn-home">🏠 Início</a></li>
+    <li><a href="sobre_nos.html">Sobre Nós</a></li>
+    <li><a href="guia-investimentos.html">Guia de Investimentos</a></li>
+    <li><a href="termos.html">Termos</a></li>
+    <li><a href="politica-privacidade.html">Privacidade</a></li>
+    <li><a href="simuladores/investimento.html">Privacidade</a></li>
+  </ul>
+</nav>
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-primary);
+}
+
+.card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.card p {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+
+/* ============================
+   ÍCONES
+============================ */
+.tool-icon {
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* ============================
+   RODAPÉ
+============================ */
+.footer {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  padding: 2rem 1rem;
+  border-top: 1px solid var(--color-secondary);
+}
+
+.footer-nav {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.footer-nav a {
+  color: var(--color-muted);
+  text-decoration: none;
+  margin: 0 0.25rem;
+}
+
+.footer-nav a:hover {
+  color: var(--color-primary);
+}
+
+/* ============================
+   RESPONSIVO
+============================ */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nav-list {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .hero h2 {
+    font-size: 1.5rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
