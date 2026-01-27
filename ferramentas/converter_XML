@@ -1,0 +1,16 @@
+.center-box{
+  display: flex;
+  justify-content: center;   /* horizontal */
+  align-items: center;       /* vertical */
+  height: 70vh;              /* ocupa boa parte da tela */
+}
+
+.topbar{
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid #bbb;
+  border-radius: 12px;
+  background: #fff;
+}
