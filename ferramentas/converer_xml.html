@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Visualizador DANFE (modelo clássico) - XML NF-e</title>
+<style>
+  :root{ --b:#000; --g:#f2f2f2; --f: Arial, Helvetica, sans-serif; }
+  body{ font-family:var(--f); margin:16px; color:#000; background:#fff; }
+  .topbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .btn{ padding:8px 10px; border:1px solid #bbb; border-radius:8px; background:#fff; cursor:pointer; }
+  .hint{ font-size:12px; color:#444; }
+
+  /* A4 */
+  .page{
+    width:210mm; min-height:297mm; margin:0 auto;
+    border:1px solid #bbb; padding:7mm; box-sizing:border-box;
+    background:#fff;
+  }
+
+  /* Boxes and titles */
+  .box{ border:1px solid var(--b); padding:4px 6px; box-sizing:border-box; }
+  .title{ font-size:9px; font-weight:700; text-transform:uppercase; margin-bottom:2px; }
+  .value{ font-size:11px; }
+  .small{ font-size:10px; }
+  .muted{ color:#333; }
+
+  .grid{ display:grid; gap:4px; }
+  .row{ display:flex; gap:4px; }
+  .col{ flex:1; }
+
+  /* Canhoto (recibo) */
+  .canhoto{
+    display:grid;
+    grid-template-columns: 1.6fr 6fr 1.4fr;
+    gap:0;
+    margin-bottom:4px;
+    font-size:9px;
+  }
+  .canhoto .cell{ border:1px solid var(--b); padding:3px 5px; }
+  .canhoto .head{ grid-column:1 / -1; border:1px solid var(--b); border-bottom:none; padding:3px 5px; }
+  .canhoto .nfbox{ display:flex; flex-direction:column; gap:2px; }
+
+  /* Header DANFE */
+  .header{
+    display:grid;
+    grid-template-columns: 1.7fr 0.9fr 2.4fr;
+    gap:4px;
+    margin-bottom:4px;
+  }
+  .danfeCenter .big{ font-size:18px; font-weight:800; letter-spacing:.3px; }
+  .danfeCenter .sub{ font-size:9px; font-weight:700; text-transform:uppercase; }
+  .danfeCenter .tipo{ font-size:10px; margin-top:2px; }
+  .danfeRight .bar{
+    height:32px; border:1px solid #000;
+    background: repeating-linear-gradient(90deg,#000 0,#000 2px,#fff 2px,#fff 4px);
+  }
+  .keyline{
+    font-family:"Courier New", monospace;
+    font-size:11px; letter-spacing:1px;
+    border:1px solid #000; padding:3px 4px; text-align:center;
+  }
+
+  /* Tables */
+  table{ width:100%; border-collapse:collapse; font-size:9px; }
+  th, td{ border:1px solid #000; padding:3px 4px; vertical-align:top; }
+  th{ background:var(--g); text-transform:uppercase; font-size:8px; }
+  .right{ text-align:right; }
+  .center{ text-align:center; }
+  .nowrap{ white-space:nowrap; }
+  .wrap{ word-break:break-word; }
+
+  /* Print */
+  @media print{
+    body{ margin:0; }
+    .topbar{ display:none; }
+    .page{ border:none; width:auto; min-height:auto; padding:6mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <input class="btn" type="file" id="file" accept=".xml"/>
+  <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+  <span class="hint">Layout no padrão “DANFE clássico” (bem parecido com o PDF modelo). Carregamento 100% local.</span>
+</div>
+
+<div class="page" id="page">
+  <div class="box"><div class="small muted">Selecione um XML para visualizar.</div></div>
+</div>
+
+<script>
+/* Helpers (namespace-safe o suficiente para NF-e) */
+function onlyDigits(s){ return (s||"").replace(/\D/g,""); }
+function chunkKey(key){
+  const k = onlyDigits(key);
+  if(!k) return "";
+  return (k.match(/.{1,4}/g)||[]).join(" ");
+}
+function isoToBR(s){
+  if(!s) return "";
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const t = s.match(/T(\d{2}):(\d{2})/);
+  if(m && t) return `${m[3]}/${m[2]}/${m[1]} ${t[1]}:${t[2]}`;
+  if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return s;
+}
+function moneyBR(v){
+  if(v === null || v === undefined || v === "") return "";
+  const n = Number(String(v).replace(",", "."));
+  if(Number.isNaN(n)) return v;
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatCNPJCPF(doc){
+  const d = onlyDigits(doc);
+  if(d.length===14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  if(d.length===11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  return doc||"";
+}
+function first(parent, tag){
+  if(!parent) return null;
+  const els = parent.getElementsByTagName(tag);
+  return els && els[0] ? els[0] : null;
+}
+function txt(parent, tag){
+  const el = first(parent, tag);
+  return el ? (el.textContent||"").trim() : "";
+}
+function safe(v){ return (v||"").replace(/</g,"&lt;"); }
+
+function build(xml){
+  const inf = xml.getElementsByTagName("infNFe")[0];
+  if(!inf) throw new Error("infNFe não encontrado. Confirme se é XML de NF-e (nfeProc/NFe).");
+
+  const ide = first(inf,"ide");
+  const emit = first(inf,"emit");
+  const dest = first(inf,"dest");
+  const endEmit = first(emit,"enderEmit");
+  const endDest = first(dest,"enderDest");
+  const total = xml.getElementsByTagName("ICMSTot")[0];
+  const prot = xml.getElementsByTagName("protNFe")[0];
+  const transp = first(inf,"transp");
+  const transporta = first(transp,"transporta");
+  const vol = first(transp,"vol");
+
+  // Chave
+  let chave = (inf.getAttribute("Id")||"").replace(/^NFe/i,"");
+  if(!chave) chave = txt(xml,"chNFe");
+
+  // Cabeçalho
+  const nNF = txt(ide,"nNF");
+  const serie = txt(ide,"serie");
+  const dhEmi = isoToBR(txt(ide,"dhEmi") || txt(ide,"dEmi"));
+  const dhSaiEnt = isoToBR(txt(ide,"dhSaiEnt") || txt(ide,"dSaiEnt"));
+  const natOp = txt(ide,"natOp");
+  const tpNF = txt(ide,"tpNF"); // 0 entrada / 1 saída
+  const tipoNF = (tpNF==="0") ? "0-ENTRADA" : (tpNF==="1") ? "1-SAÍDA" : tpNF;
+
+  // Emitente
+  const emitNome = txt(emit,"xNome");
+  const emitDoc = formatCNPJCPF(txt(emit,"CNPJ") || txt(emit,"CPF"));
+  const emitIE = txt(emit,"IE");
+  const emitEnd = [
+    txt(endEmit,"xLgr"), txt(endEmit,"nro"),
+    (txt(endEmit,"xCpl")?(" - "+txt(endEmit,"xCpl")):""),
+    (txt(endEmit,"xBairro")?(" - "+txt(endEmit,"xBairro")):"")
+  ].filter(Boolean).join(", ").replace(",  -", " -");
+  const emitCity = `${txt(endEmit,"xMun")}/${txt(endEmit,"UF")}`;
+  const emitCEP = txt(endEmit,"CEP");
+  const emitFone = txt(endEmit,"fone");
+
+  // Destinatário
+  const destNome = txt(dest,"xNome");
+  const destDoc = formatCNPJCPF(txt(dest,"CNPJ") || txt(dest,"CPF"));
+  const destIE = txt(dest,"IE");
+  const destEnd = [
+    txt(endDest,"xLgr"), txt(endDest,"nro"),
+    (txt(endDest,"xBairro")?(" - "+txt(endDest,"xBairro")):"")
+  ].filter(Boolean).join(", ").replace(",  -", " -");
+  const destCity = `${txt(endDest,"xMun")}/${txt(endDest,"UF")}`;
+  const destCEP = txt(endDest,"CEP");
+  const destFone = txt(endDest,"fone");
+
+  // Protocolo
+  const nProt = txt(prot,"nProt");
+  const dhRecbto = isoToBR(txt(prot,"dhRecbto"));
+
+  // Totais (ICMSTot)
+  const vBC = moneyBR(txt(total,"vBC"));
+  const vICMS = moneyBR(txt(total,"vICMS"));
+  const vBCST = moneyBR(txt(total,"vBCST"));
+  const vST = moneyBR(txt(total,"vST"));
+  const vProd = moneyBR(txt(total,"vProd"));
+  const vFrete = moneyBR(txt(total,"vFrete"));
+  const vSeg = moneyBR(txt(total,"vSeg"));
+  const vDesc = moneyBR(txt(total,"vDesc"));
+  const vIPI = moneyBR(txt(total,"vIPI"));
+  const vNF = moneyBR(txt(total,"vNF"));
+
+  // Cobrança / Duplicatas
+  const cobr = first(inf,"cobr");
+  const dupList = cobr ? cobr.getElementsByTagName("dup") : [];
+  let dupRows = "";
+  for(const d of dupList){
+    dupRows += `
+      <td class="nowrap">
+        <div><b>${txt(d,"nDup")}</b></div>
+        <div>${isoToBR(txt(d,"dVenc"))}</div>
+        <div class="right">R$ ${moneyBR(txt(d,"vDup"))}</div>
+      </td>
+    `;
+  }
+  if(!dupRows){
+    dupRows = `<td class="muted">Sem duplicatas no XML.</td>`;
+  }
+
+  // Transportador / volumes
+  const transRazao = txt(transporta,"xNome");
+  const transDoc = formatCNPJCPF(txt(transporta,"CNPJ") || txt(transporta,"CPF"));
+  const transEnd = txt(transporta,"xEnder");
+  const transMun = txt(transporta,"xMun");
+  const transUF = txt(transporta,"UF");
+  const freteConta = txt(transp,"modFrete"); // 0/1/2...
+  const qVol = txt(vol,"qVol");
+  const esp = txt(vol,"esp");
+  const marca = txt(vol,"marca");
+  const num = txt(vol,"nVol");
+  const pesoB = txt(vol,"pesoB");
+  const pesoL = txt(vol,"pesoL");
+
+  // Produtos
+  const dets = inf.getElementsByTagName("det");
+  let itensRows = "";
+  for(const det of dets){
+    const nItem = det.getAttribute("nItem") || "";
+    const prod = det.getElementsByTagName("prod")[0];
+    if(!prod) continue;
+
+    // impostos por item (ICMS)
+    const imposto = det.getElementsByTagName("imposto")[0];
+    const icms = imposto ? imposto.getElementsByTagName("ICMS")[0] : null;
+    let cst = "", pICMS = "", vBCi = "", vICMSi = "";
+    if(icms){
+      // pega o primeiro filho dentro de ICMS (ICMS00, ICMS10, etc.)
+      const icmsType = Array.from(icms.children||[])[0];
+      if(icmsType){
+        cst = txt(icmsType,"CST") || txt(icmsType,"CSOSN");
+        pICMS = txt(icmsType,"pICMS");
+        vBCi = txt(icmsType,"vBC");
+        vICMSi = txt(icmsType,"vICMS");
+      }
+    }
+    const ipi = imposto ? imposto.getElementsByTagName("IPI")[0] : null;
+    let vIPIi = "", pIPI = "";
+    if(ipi){
+      const ipiTrib = ipi.getElementsByTagName("IPITrib")[0];
+      if(ipiTrib){
+        vIPIi = txt(ipiTrib,"vIPI");
+        pIPI = txt(ipiTrib,"pIPI");
+      }
+    }
+
+    itensRows += `
+      <tr>
+        <td class="nowrap">${txt(prod,"cProd")}</td>
+        <td class="wrap">${txt(prod,"xProd")}</td>
+        <td class="center nowrap">${txt(prod,"NCM")}</td>
+        <td class="center nowrap">${cst}</td>
+        <td class="center nowrap">${txt(prod,"CFOP")}</td>
+        <td class="center nowrap">${txt(prod,"uCom")}</td>
+        <td class="right nowrap">${txt(prod,"qCom")}</td>
+        <td class="right nowrap">${moneyBR(txt(prod,"vUnCom"))}</td>
+        <td class="right nowrap">${moneyBR(txt(prod,"vProd"))}</td>
+        <td class="right nowrap">${moneyBR(vBCi)}</td>
+        <td class="right nowrap">${moneyBR(vICMSi)}</td>
+        <td class="right nowrap">${moneyBR(vIPIi)}</td>
+        <td class="right nowrap">${pICMS ? (pICMS+"%") : ""}</td>
+        <td class="right nowrap">${pIPI ? (pIPI+"%") : ""}</td>
+      </tr>
+    `;
+  }
+  if(!itensRows){
+    itensRows = `<tr><td colspan="14" class="center">Nenhum item encontrado.</td></tr>`;
+  }
+
+  // Info adicionais
+  const infCpl = txt(inf,"infCpl");
+  const infAdFisco = txt(inf,"infAdFisco");
+
+  return `
+    <!-- CANHOTO -->
+    <div class="canhoto">
+      <div class="head">RECEBEMOS DE <b>${emitNome}</b> OS PRODUTOS CONSTANTES DA NOTA FISCAL INDICADA AO LADO</div>
+      <div class="cell"><div class="title">DATA DE RECEBIMENTO</div><div class="value">&nbsp;</div></div>
+      <div class="cell"><div class="title">IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div><div class="value">&nbsp;</div></div>
+      <div class="cell nfbox">
+        <div class="title">NF-e</div>
+        <div class="value"><b>N. ${nNF}</b></div>
+        <div class="value"><b>SÉRIE ${serie}</b></div>
+      </div>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="box">
+        <div class="title">Identificação do emitente</div>
+        <div class="value"><b>${emitNome}</b></div>
+        <div class="small">
+          ${emitEnd ? `${emitEnd}<br>` : ""}
+          ${emitCity ? `${emitCity} &nbsp; CEP: ${emitCEP || ""}<br>` : ""}
+          ${emitFone ? `Fone: ${emitFone}<br>` : ""}
+          <b>CNPJ/CPF:</b> ${emitDoc} &nbsp; <b>IE:</b> ${emitIE}
+        </div>
+      </div>
+
+      <div class="box danfeCenter" style="text-align:center">
+        <div class="big">DANFE</div>
+        <div class="sub">Documento auxiliar da nota fiscal eletrônica</div>
+        <div class="tipo"><b>${tipoNF}</b></div>
+        <div class="small" style="margin-top:6px">
+          <b>N.</b> ${nNF}<br>
+          <b>SÉRIE</b> ${serie}<br>
+          <b>FOLHA</b> 01/01
+        </div>
+      </div>
+
+      <div class="box danfeRight">
+        <div class="bar" title="Código de barras (placeholder)"></div>
+        <div class="title" style="margin-top:4px">Chave de acesso da NF-e</div>
+        <div class="keyline">${chunkKey(chave)}</div>
+        <div class="small" style="margin-top:4px">
+          Consulta de autenticidade no portal nacional da NF-e
+          <br><span class="muted">www.nfe.fazenda.gov.br</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NATUREZA / PROTOCOLO -->
+    <div class="row">
+      <div class="col box">
+        <div class="title">Natureza da operação</div>
+        <div class="value">${natOp || ""}</div>
+      </div>
+      <div class="col box">
+        <div class="title">Protocolo de autorização de uso</div>
+        <div class="value">${nProt || ""} ${dhRecbto ? (" - " + dhRecbto) : ""}</div>
+      </div>
+    </div>
+
+    <!-- DESTINATÁRIO + DATAS À DIREITA -->
+    <div class="row">
+      <div class="col box">
+        <div class="title">Destinatário / Remetente</div>
+        <div class="value"><b>${destNome}</b></div>
+        <div class="small">
+          <b>CNPJ/CPF:</b> ${destDoc} &nbsp; <b>IE:</b> ${destIE}<br>
+          ${destEnd ? `${destEnd}<br>` : ""}
+          ${destCity ? `${destCity} &nbsp; CEP: ${destCEP || ""}<br>` : ""}
+          ${destFone ? `Fone: ${destFone}` : ""}
+        </div>
+      </div>
+      <div class="col" style="max-width:62mm">
+        <div class="box">
+          <div class="title">Data de emissão</div>
+          <div class="value">${dhEmi || ""}</div>
+        </div>
+        <div class="box">
+          <div class="title">Data entrada/saída</div>
+          <div class="value">${dhSaiEnt || ""}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FATURA / DUPLICATAS -->
+    <div class="box">
+      <div class="title">Fatura</div>
+      <table>
+        <tr>${dupRows}</tr>
+      </table>
+    </div>
+
+    <!-- CÁLCULO DO IMPOSTO -->
+    <div class="box">
+      <div class="title">Cálculo do imposto</div>
+      <table>
+        <tr>
+          <th>Base de cálculo do ICMS</th>
+          <th>Valor do ICMS</th>
+          <th>Base de cálculo do ICMS Subst.</th>
+          <th>Valor do ICMS Subst.</th>
+          <th>Valor total dos produtos</th>
+        </tr>
+        <tr>
+          <td class="right">R$ ${vBC}</td>
+          <td class="right">R$ ${vICMS}</td>
+          <td class="right">R$ ${vBCST}</td>
+          <td class="right">R$ ${vST}</td>
+          <td class="right">R$ ${vProd}</td>
+        </tr>
+        <tr>
+          <th>Valor do frete</th>
+          <th>Valor do seguro</th>
+          <th>Desconto</th>
+          <th>Outras despesas acessórias</th>
+          <th>Valor total da nota</th>
+        </tr>
+        <tr>
+          <td class="right">R$ ${vFrete}</td>
+          <td class="right">R$ ${vSeg}</td>
+          <td class="right">R$ ${vDesc}</td>
+          <td class="right">R$ ${""}</td>
+          <td class="right"><b>R$ ${vNF}</b></td>
+        </tr>
+        <tr>
+          <th>Valor do IPI</th>
+          <td class="right" colspan="4">R$ ${vIPI}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- TRANSPORTADOR / VOLUMES -->
+    <div class="box">
+      <div class="title">Transportador / Volumes transportados</div>
+      <table>
+        <tr>
+          <th>Razão social</th>
+          <th>Frete por conta</th>
+          <th>Endereço</th>
+          <th>Município</th>
+          <th>UF</th>
+          <th>CNPJ/CPF</th>
+        </tr>
+        <tr>
+          <td>${transRazao || ""}</td>
+          <td class="center">${freteConta || ""}</td>
+          <td>${transEnd || ""}</td>
+          <td>${transMun || ""}</td>
+          <td class="center">${transUF || ""}</td>
+          <td class="center nowrap">${transDoc || ""}</td>
+        </tr>
+        <tr>
+          <th>Quantidade</th>
+          <th>Espécie</th>
+          <th>Marca</th>
+          <th>Numeração</th>
+          <th>Peso bruto</th>
+          <th>Peso líquido</th>
+        </tr>
+        <tr>
+          <td class="center">${qVol || ""}</td>
+          <td class="center">${esp || ""}</td>
+          <td class="center">${marca || ""}</td>
+          <td class="center">${num || ""}</td>
+          <td class="right">${pesoB || ""}</td>
+          <td class="right">${pesoL || ""}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- DADOS DO PRODUTO / SERVIÇO -->
+    <div class="box">
+      <div class="title">Dados do produto / serviço</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Cod. prod</th>
+            <th>Descrição do prod./serv.</th>
+            <th>NCM/SH</th>
+            <th>CST</th>
+            <th>CFOP</th>
+            <th>UN</th>
+            <th class="right">Quant.</th>
+            <th class="right">V. Unitário</th>
+            <th class="right">V. Total</th>
+            <th class="right">BC.ICMS</th>
+            <th class="right">V.ICMS</th>
+            <th class="right">V.IPI</th>
+            <th class="right">A.ICMS</th>
+            <th class="right">A.IPI</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itensRows}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CÁLCULO DO ISSQN -->
+    <div class="box">
+      <div class="title">Cálculo do ISSQN</div>
+      <table>
+        <tr>
+          <th>Inscrição municipal</th>
+          <th>Valor total dos serviços</th>
+          <th>Base de cálculo do ISSQN</th>
+          <th>Valor do ISSQN</th>
+        </tr>
+        <tr>
+          <td>${txt(emit,"IM") || ""}</td>
+          <td class="right">R$ ${moneyBR(txt(xml,"vServ")) || ""}</td>
+          <td class="right">R$ ${moneyBR(txt(xml,"vBC")) || ""}</td>
+          <td class="right">R$ ${moneyBR(txt(xml,"vISS")) || ""}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- DADOS ADICIONAIS -->
+    <div class="row">
+      <div class="col box">
+        <div class="title">Dados adicionais - Informações complementares</div>
+        <div class="small">${safe(infCpl) || ""}</div>
+      </div>
+      <div class="col box" style="max-width:78mm">
+        <div class="title">Reservado ao fisco</div>
+        <div class="small">${safe(infAdFisco) || ""}</div>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById("file").addEventListener("change", function(){
+  const f = this.files[0];
+  if(!f) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const xml = new DOMParser().parseFromString(e.target.result, "text/xml");
+      if(xml.getElementsByTagName("parsererror")[0]) throw new Error("XML inválido (parsererror).");
+      document.getElementById("page").innerHTML = build(xml);
+    }catch(err){
+      document.getElementById("page").innerHTML = `
+        <div class="box">
+          <div class="title">Erro</div>
+          <div class="value">${String(err.message || err)}</div>
+        </div>
+      `;
+    }
+  };
+  reader.readAsText(f, "utf-8");
+});
+</script>
+
+</body>
+</html>
