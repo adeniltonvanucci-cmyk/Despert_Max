@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://www.despertmax.com.br/sitemap.xml
