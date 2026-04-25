@@ -163,9 +163,28 @@
     .page{ box-shadow:none; border-radius:0; width:auto; min-height:auto; }
   }
 </style>
+  <meta property="og:title" content="Visualizador de NF-e (DANFE) — DespertMax" />
+  <meta property="og:description" content="Visualize o DANFE da sua NF-e diretamente no navegador. Processamento 100% local, sem envio de dados." />
+  <meta property="og:image" content="https://despertmax.com.br/logo.svg" />
+  <meta property="og:url" content="https://despertmax.com.br/ferramentas/" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="../logo.svg" type="image/svg+xml" />
 </head>
 
 <body>
+  <!-- Botão voltar -->
+  <div style="position:fixed;top:12px;left:12px;z-index:999;">
+    <a href="../index.html"
+       style="display:inline-flex;align-items:center;gap:6px;color:#94a3b8;
+              font-size:0.8rem;font-weight:600;text-decoration:none;
+              padding:6px 12px;border:1px solid #1e293b;border-radius:8px;
+              background:#0b1220;font-family:Inter,system-ui,Arial,sans-serif;"
+       onmouseover="this.style.color='#3b82f6';this.style.borderColor='#3b82f6'"
+       onmouseout="this.style.color='#94a3b8';this.style.borderColor='#1e293b'">
+      ← Início
+    </a>
+  </div>
+
 <header class="appbar">
   <div class="brand">
     <div class="logo-dot"></div>

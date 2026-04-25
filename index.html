@@ -3,12 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Ferramentas inteligentes para decisões financeiras: simuladores de amortização, investimentos, controle de gastos e visualizador de XML da NF-e (DANFE)." />
-  <title>DespertMax — Clareza e Ação Para Crescer</title>
 
+  <!-- SEO -->
+  <title>DespertMax — Ferramentas Financeiras Gratuitas</title>
+  <meta name="description" content="Ferramentas financeiras gratuitas: simuladores de amortização, investimentos, controle de gastos e visualizador de NF-e (DANFE). Tome decisões com clareza." />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="DespertMax" />
+
+  <!-- Open Graph (WhatsApp, LinkedIn, Facebook) -->
+  <meta property="og:title" content="DespertMax — Ferramentas Financeiras Gratuitas" />
+  <meta property="og:description" content="Simuladores de amortização, investimentos, controle de gastos e NF-e. 100% gratuito e no navegador." />
+  <meta property="og:image" content="https://despertmax.com.br/logo.svg" />
+  <meta property="og:url" content="https://despertmax.com.br" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DespertMax — Ferramentas Financeiras Gratuitas" />
+  <meta name="twitter:description" content="Simuladores de amortização, investimentos, controle de gastos e NF-e. 100% gratuito." />
+  <meta name="twitter:image" content="https://despertmax.com.br/logo.svg" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="logo.svg" type="image/svg+xml" />
+
+  <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -21,46 +44,58 @@
         <p class="subtitle">Clareza e Ação Para Crescer</p>
       </div>
     </div>
+
+    <nav class="nav" aria-label="Menu principal">
+      <ul class="nav-list">
+        <li><a href="sobre_nos.html">Sobre Nós</a></li>
+        <li><a href="guia-investimentos.html">Guia de Investimentos</a></li>
+        <li><a href="termos.html">Termos</a></li>
+        <li><a href="politica-privacidade.html">Privacidade</a></li>
+      </ul>
+    </nav>
   </header>
 
   <main>
     <section class="hero container">
       <h2>Ferramentas Inteligentes para Decisões Reais</h2>
       <p class="subtitle">Simuladores modernos para investir, economizar e planejar.</p>
+      <a href="#ferramentas" class="btn-cta">Ver todas as ferramentas ↓</a>
     </section>
 
-    <section class="container grid">
+    <section class="container grid" id="ferramentas" aria-label="Ferramentas disponíveis">
+
       <a href="simuladores/amortizacao.html" class="card">
-        <span class="tool-icon">📉</span>
+        <span class="tool-icon" aria-hidden="true">📉</span>
         <h3>Simulador de Amortização</h3>
-        <p>Entenda o impacto dos juros e planeje seus pagamentos.</p>
+        <p>Compare SAC e PRICE, simule pagamentos extras e exporte o resultado.</p>
       </a>
 
       <a href="simuladores/investimento.html" class="card">
-        <span class="tool-icon">📈</span>
+        <span class="tool-icon" aria-hidden="true">📈</span>
         <h3>Simulador de Investimentos</h3>
-        <p>Projete seus rendimentos com clareza e segurança.</p>
+        <p>Projete CDB, LCI, LCA e Tesouro Direto com aportes mensais e IR.</p>
       </a>
 
       <a href="simuladores/controle-gastos.html" class="card">
-        <span class="tool-icon">💰</span>
+        <span class="tool-icon" aria-hidden="true">💰</span>
         <h3>Controle de Gastos</h3>
-        <p>Organize seu orçamento e acompanhe suas despesas.</p>
+        <p>Organize seu orçamento e acompanhe suas despesas mensais.</p>
       </a>
 
-      <!-- NOVA FERRAMENTA -->
-      <a href="/ferramentas/" class="card">
-        <span class="tool-icon">🧾</span>
-        <h3>Visualizar XML da NF-e (DANFE – gratuito)</h3>
-        <p>Carregue o XML da NF-e e visualize o DANFE completo no navegador. imprimir/salvar em PDF.</p>
+      <a href="ferramentas/" class="card">
+        <span class="tool-icon" aria-hidden="true">🧾</span>
+        <h3>Visualizar XML da NF-e (DANFE)</h3>
+        <p>Carregue o XML da nota fiscal e visualize o DANFE. Processamento 100% local.</p>
       </a>
+
     </section>
   </main>
 
   <footer class="container footer">
     <p>© <span id="ano"></span> DespertMax — Clareza e Ação Para Crescer</p>
-    <nav class="footer-nav">
+    <nav class="footer-nav" aria-label="Links do rodapé">
       <a href="sobre_nos.html">Sobre Nós</a> |
+      <a href="guia-investimentos.html">Guia de Investimentos</a> |
       <a href="termos.html">Termos</a> |
       <a href="politica-privacidade.html">Privacidade</a>
     </nav>
