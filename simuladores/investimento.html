@@ -218,6 +218,7 @@
               <option value="pre" selected>Pré-fixado (a.a.)</option>
               <option value="pos">% do CDI (pós-fixado)</option>
               <option value="ipca">IPCA + taxa (a.a.)</option>
+              <option value="tr">TR + taxa (a.a.)</option>
             </select>
           </div>
         </div>
@@ -238,6 +239,18 @@
 <div class="row" data-show-on="pos" style="display:none">
   <label for="cdiAnual">CDI anual (a.a. %)</label>
   <input id="cdiAnual" type="text" inputmode="decimal" value="13,71" placeholder="Ex: 13,71" aria-label="CDI anual">
+</div>
+
+<!-- TR -->
+<div class="row" data-show-on="tr" style="display:none">
+  <label for="trAnual">TR anual (a.a. %)</label>
+  <input id="trAnual" type="text" inputmode="decimal" value="0,00" placeholder="Ex: 2,00" aria-label="TR anual">
+  <small id="trFonte" style="display:block;margin-top:4px;font-size:0.75rem;color:#94a3b8;">Buscando TR automática do Banco Central…</small>
+</div>
+
+<div class="row" data-show-on="tr" style="display:none">
+  <label for="spreadTR">Taxa fixa adicional (a.a. %)</label>
+  <input id="spreadTR" type="text" inputmode="decimal" value="0,00" placeholder="Ex: 0,50" aria-label="Taxa fixa adicional sobre TR">
 </div>
 
 <!-- IPCA+ -->
