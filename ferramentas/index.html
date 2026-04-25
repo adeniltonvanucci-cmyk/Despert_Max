@@ -157,6 +157,23 @@
   .ibs-card{ border:1px solid #000; padding:6px; }
   .ibs-status{ margin-top:6px; font-size:10px; color:#333; }
 
+
+  /* File list items */
+  .file-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:7px 12px; border-radius:10px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05);
+    font-size:12px; max-width:220px;
+    transition: background .15s, border-color .15s;
+  }
+  .file-chip:hover{ background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.25); }
+  .file-chip.active{ background:rgba(107,123,255,.25); border-color:rgba(107,123,255,.65); color:#fff; }
+  .file-chip .chip-num{ font-weight:800; color:rgba(255,255,255,.5); font-size:11px; min-width:18px; }
+  .file-chip.active .chip-num{ color:#aab0ff; }
+  .file-chip .chip-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-chip .chip-val{ font-size:11px; color:rgba(255,255,255,.55); white-space:nowrap; }
+  .file-chip.active .chip-val{ color:#aab0ff; }
   @media print{
     .appbar, .viewer-actions, .dropzone{ display:none !important; }
     body{ background:#fff; }
@@ -195,8 +212,8 @@
   </div>
 
   <label class="btn" title="Selecionar XML (NF-e)">
-    <input id="fileInput" type="file" accept=".xml" hidden>
-    📁 Selecionar Arquivo
+    <input id="fileInput" type="file" accept=".xml" multiple hidden>
+    📁 Selecionar Arquivo(s)
   </label>
 </header>
 
@@ -213,14 +230,24 @@
       <span>✓ Suporte IBS/CBS</span>
       <span>✓ Privacidade Total</span>
     </div>
-    <div class="dz-hint">Dica: você também pode soltar o XML em qualquer lugar da página.</div>
+    <div class="dz-hint">Dica: selecione vários arquivos de uma vez ou arraste múltiplos XMLs.</div>
   </section>
 
   <section id="viewer" class="viewer">
     <div class="viewer-actions">
       <button class="btn secondary" id="backBtn">← Trocar arquivo</button>
-      <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+      <button class="btn secondary" id="prevBtn" style="display:none">‹ Anterior</button>
+      <span id="fileCounter" style="font-size:13px;color:rgba(255,255,255,.65);font-weight:600;display:none;min-width:60px;text-align:center;"></span>
+      <button class="btn secondary" id="nextBtn" style="display:none">Próximo ›</button>
+      <button class="btn" id="printOneBtn">Imprimir / Salvar PDF</button>
+      <button class="btn" id="printAllBtn" style="display:none;background:rgba(107,123,255,.25);border-color:rgba(107,123,255,.5)">🖨️ Imprimir Todos</button>
       <div class="note">DANFE clássico</div>
+    </div>
+
+    <!-- Lista de arquivos (múltiplos) -->
+    <div id="fileList" style="display:none;margin-bottom:14px;display:none;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:8px;">Arquivos carregados</div>
+      <div id="fileListItems" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     </div>
 
     <div class="page" id="page"></div>
@@ -708,12 +735,23 @@ function build(xml){
   `;
 }
 
-/* ===== UI wiring ===== */
-const fileInput = document.getElementById("fileInput");
-const dropzone  = document.getElementById("dropzone");
-const viewer    = document.getElementById("viewer");
-const page      = document.getElementById("page");
-const backBtn   = document.getElementById("backBtn");
+/* ===== UI wiring — múltiplos arquivos ===== */
+const fileInput   = document.getElementById("fileInput");
+const dropzone    = document.getElementById("dropzone");
+const viewer      = document.getElementById("viewer");
+const page        = document.getElementById("page");
+const backBtn     = document.getElementById("backBtn");
+const prevBtn     = document.getElementById("prevBtn");
+const nextBtn     = document.getElementById("nextBtn");
+const fileCounter = document.getElementById("fileCounter");
+const printOneBtn = document.getElementById("printOneBtn");
+const printAllBtn = document.getElementById("printAllBtn");
+const fileListEl  = document.getElementById("fileList");
+const fileListItems = document.getElementById("fileListItems");
+
+let xmlDocs   = [];   // DOMDocument de cada NF carregada
+let xmlMetas  = [];   // { nf, emitente, total } para cada NF
+let currentIdx = 0;
 
 function parseXmlText(text){
   const xml = new DOMParser().parseFromString(text, "text/xml");
@@ -722,31 +760,148 @@ function parseXmlText(text){
   return xml;
 }
 
-function handleFile(file){
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try{
-      const xml = parseXmlText(e.target.result);
-      page.innerHTML = build(xml);
-      dropzone.style.display = "none";
-      viewer.style.display = "block";
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }catch(ex){
-      alert("Erro ao ler o XML: " + (ex.message || ex));
-    }
-  };
-  reader.readAsText(file, "utf-8");
+function extractMeta(xmlDoc){
+  const inf  = xmlDoc.getElementsByTagName("infNFe")[0];
+  if(!inf) return { nf: "?", emitente: "XML inválido", total: "" };
+  const ide  = inf.getElementsByTagName("ide")[0];
+  const emit = inf.getElementsByTagName("emit")[0];
+  const nf   = (ide && ide.getElementsByTagName("nNF")[0]?.textContent) || "?";
+  const xNome = (emit && (emit.getElementsByTagName("xNome")[0]?.textContent || emit.getElementsByTagName("xFant")[0]?.textContent)) || "—";
+  const vNF   = inf.getElementsByTagName("vNF")[0]?.textContent || "";
+  const total = vNF ? "R$ " + Number(String(vNF).replace(",",".")).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}) : "";
+  return { nf, emitente: xNome, total };
 }
 
-fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+function showDanfe(idx){
+  if(idx < 0 || idx >= xmlDocs.length) return;
+  currentIdx = idx;
+  try{
+    page.innerHTML = build(xmlDocs[idx]);
+  }catch(ex){
+    page.innerHTML = `<p style="color:red;padding:20px">Erro: ${ex.message}</p>`;
+  }
+  // Atualiza navegação
+  const multi = xmlDocs.length > 1;
+  prevBtn.style.display    = multi ? "" : "none";
+  nextBtn.style.display    = multi ? "" : "none";
+  fileCounter.style.display = multi ? "" : "none";
+  printAllBtn.style.display = multi ? "" : "none";
+  fileListEl.style.display  = multi ? "" : "none";
+  if(multi){
+    fileCounter.textContent = `${idx + 1} / ${xmlDocs.length}`;
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === xmlDocs.length - 1;
+    // Atualiza chips
+    document.querySelectorAll(".file-chip").forEach((el, i) => {
+      el.classList.toggle("active", i === idx);
+    });
+  }
+  dropzone.style.display = "none";
+  viewer.style.display   = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function buildFileList(){
+  fileListItems.innerHTML = "";
+  xmlMetas.forEach((m, i) => {
+    const chip = document.createElement("div");
+    chip.className = "file-chip" + (i === currentIdx ? " active" : "");
+    chip.title = m.emitente;
+    chip.innerHTML = `<span class="chip-num">NF ${m.nf}</span><span class="chip-name">${m.emitente.substring(0,22)}</span><span class="chip-val">${m.total}</span>`;
+    chip.addEventListener("click", () => showDanfe(i));
+    fileListItems.appendChild(chip);
+  });
+}
+
+function readFiles(files){
+  if(!files || files.length === 0) return;
+  const arr = Array.from(files);
+  const promises = arr.map(file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try{
+        const xmlDoc = parseXmlText(e.target.result);
+        resolve(xmlDoc);
+      }catch(ex){ reject({ file: file.name, msg: ex.message }); }
+    };
+    reader.onerror = () => reject({ file: file.name, msg: "Erro de leitura" });
+    reader.readAsText(file, "utf-8");
+  }));
+
+  Promise.allSettled(promises).then(results => {
+    const erros = [];
+    xmlDocs  = [];
+    xmlMetas = [];
+    results.forEach((r, i) => {
+      if(r.status === "fulfilled"){
+        xmlDocs.push(r.value);
+        xmlMetas.push(extractMeta(r.value));
+      }else{
+        erros.push(`${arr[i].name}: ${r.reason?.msg || "erro"}`);
+      }
+    });
+    if(xmlDocs.length === 0){
+      alert("Nenhum XML válido encontrado.\n" + erros.join("\n"));
+      return;
+    }
+    if(erros.length) alert("Arquivos com erro (ignorados):\n" + erros.join("\n"));
+    buildFileList();
+    showDanfe(0);
+  });
+}
+
+/* Navegação */
+prevBtn.addEventListener("click", () => showDanfe(currentIdx - 1));
+nextBtn.addEventListener("click", () => showDanfe(currentIdx + 1));
+
+/* Imprimir atual */
+printOneBtn.addEventListener("click", () => window.print());
+
+/* Imprimir todos */
+printAllBtn.addEventListener("click", () => {
+  if(!xmlDocs.length) return;
+  const tmpDiv = document.createElement("div");
+  tmpDiv.id = "print-all-block";
+  tmpDiv.style.cssText = "display:none;";
+  xmlDocs.forEach((xmlDoc, i) => {
+    const pageDiv = document.createElement("div");
+    pageDiv.className = "page";
+    pageDiv.style.pageBreakAfter = i < xmlDocs.length - 1 ? "always" : "";
+    try{ pageDiv.innerHTML = build(xmlDoc); }
+    catch(ex){ pageDiv.innerHTML = `<p style="color:red">Erro na NF ${xmlMetas[i]?.nf}: ${ex.message}</p>`; }
+    tmpDiv.appendChild(pageDiv);
+  });
+  document.body.appendChild(tmpDiv);
+  // Esconder a page atual e exibir o bloco de todas
+  page.style.display = "none";
+  tmpDiv.style.display = "block";
+  window.print();
+  // Restaurar
+  setTimeout(() => {
+    tmpDiv.remove();
+    page.style.display = "";
+  }, 800);
+});
+
+/* Voltar */
 backBtn.addEventListener("click", () => {
   viewer.style.display = "none";
   dropzone.style.display = "block";
   fileInput.value = "";
+  xmlDocs  = [];
+  xmlMetas = [];
+  currentIdx = 0;
+  prevBtn.style.display = "none";
+  nextBtn.style.display = "none";
+  fileCounter.style.display = "none";
+  printAllBtn.style.display = "none";
+  fileListEl.style.display  = "none";
 });
 
-/* Drag & Drop */
+/* Inputs */
+fileInput.addEventListener("change", () => readFiles(fileInput.files));
+
+/* Drag & Drop — aceita múltiplos */
 ["dragenter","dragover"].forEach(evt => {
   dropzone.addEventListener(evt, (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -760,21 +915,24 @@ backBtn.addEventListener("click", () => {
   });
 });
 dropzone.addEventListener("drop", (e) => {
-  const file = e.dataTransfer.files && e.dataTransfer.files[0];
-  handleFile(file);
+  readFiles(e.dataTransfer.files);
 });
 ["dragover","drop"].forEach(evt => document.addEventListener(evt, (e) => e.preventDefault()));
 document.addEventListener("drop", (e) => {
-  const file = e.dataTransfer.files && e.dataTransfer.files[0];
-  if(file) handleFile(file);
+  if(e.dataTransfer.files && e.dataTransfer.files.length && viewer.style.display === "none")
+    readFiles(e.dataTransfer.files);
 });
 dropzone.addEventListener("keydown", (e) => {
-  if(e.key === "Enter" || e.key === " "){
-    e.preventDefault();
-    fileInput.click();
-  }
+  if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fileInput.click(); }
 });
 dropzone.addEventListener("click", () => fileInput.click());
+
+/* Teclado: setas para navegar */
+document.addEventListener("keydown", (e) => {
+  if(viewer.style.display === "none" || xmlDocs.length <= 1) return;
+  if(e.key === "ArrowRight" || e.key === "ArrowDown") showDanfe(Math.min(currentIdx + 1, xmlDocs.length - 1));
+  if(e.key === "ArrowLeft"  || e.key === "ArrowUp")   showDanfe(Math.max(currentIdx - 1, 0));
+});
 </script>
 </body>
 </html>
