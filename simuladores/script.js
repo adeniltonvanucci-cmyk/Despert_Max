@@ -20,9 +20,6 @@ const cdiAnual       = document.querySelector('#cdiAnual');
 const ipcaAnual      = document.querySelector('#ipcaAnual');
 const spread         = document.querySelector('#spread');
 
-// TR
-const trAnual        = document.querySelector('#trAnual');
-const spreadTR       = document.querySelector('#spreadTR');
 
 // Parâmetros gerais
 const aporteInicial  = document.querySelector('#aporteInicial');
@@ -153,43 +150,6 @@ async function setCDIAutomatico(){
 }
 
 
-/* =========================================================
-   TR automática – Banco Central (SGS série 226)
-   ========================================================= */
-const TR_FALLBACK = 0.10; // fallback conservador
-
-async function setTRAutomatica() {
-  try {
-    // Série 226 = TR diária. Buscamos os últimos 365 dias e acumulamos.
-    const url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.226/dados/ultimos/365?formato=json';
-    const res = await fetch(url, { cache: 'no-store' });
-    const data = await res.json();
-
-    if (!data || data.length === 0) throw new Error('Sem dados de TR.');
-
-    // Acumular TR diária → anual
-    const trAcumulada = data.reduce((acc, d) => {
-      const v = parseFloat(String(d.valor).replace(',', '.'));
-      return isNaN(v) ? acc : acc * (1 + v / 100);
-    }, 1);
-
-    const trAnualPct = (trAcumulada - 1) * 100;
-
-    if (trAnualPct < 0 || trAnualPct > 20) throw new Error('TR fora da faixa esperada.');
-
-    if (trAnual) trAnual.value = trAnualPct.toFixed(2).replace('.', ',');
-
-    const fonte = document.querySelector('#trFonte');
-    if (fonte) fonte.textContent = `TR acumulada 12m: ${trAnualPct.toFixed(2)}% — Fonte: Banco Central (SGS 226)`;
-
-    console.log(`✅ TR 12m (BCB): ${trAnualPct.toFixed(2)}%`);
-  } catch (e) {
-    console.warn('⚠️ Falha ao buscar TR do BCB. Usando fallback.', e?.message || e);
-    if (trAnual && !trAnual.value) trAnual.value = String(TR_FALLBACK).replace('.', ',');
-    const fonte = document.querySelector('#trFonte');
-    if (fonte) fonte.textContent = 'TR: não foi possível buscar automaticamente. Informe manualmente.';
-  }
-}
 
 /* =========================================================
    Lógica do simulador
@@ -231,12 +191,6 @@ function obterTaxaAnual(regimeVal){
     const ipca = parsePercent(ipcaAnual.value)/100;
     const fixo = parsePercent(spread.value)/100;
     const efetiva = (1+ipca)*(1+fixo)-1;
-    return efetiva*100;
-  }
-  if (regimeVal==='tr'){
-    const tr   = parsePercent(trAnual?.value)/100;
-    const fixo = parsePercent(spreadTR?.value)/100;
-    const efetiva = (1+tr)*(1+fixo)-1;
     return efetiva*100;
   }
   return 0;
@@ -319,7 +273,6 @@ function init(){
     updateRegimeUI();
     if (regime.value === 'ipca') setIPCAFromIBGE();
     if (regime.value === 'pos')  setCDIAutomatico();
-    if (regime.value === 'tr')   setTRAutomatica();
   });
 
   // Máscaras
@@ -330,8 +283,6 @@ function init(){
   attachPercentMask(cdiAnual);
   attachPercentMask(ipcaAnual);
   attachPercentMask(spread);
-  attachPercentMask(trAnual);
-  attachPercentMask(spreadTR);
 
   // Formulário
   const form = document.querySelector('#simForm');

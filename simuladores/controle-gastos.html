@@ -7,13 +7,11 @@
   <meta name="description" content="Organize seu orçamento, registre despesas e receitas e acompanhe seu saldo mensalmente. 100% gratuito." />
   <meta name="robots" content="index, follow" />
   <meta name="author" content="DespertMax" />
-
   <meta property="og:title" content="Controle de Gastos — DespertMax" />
   <meta property="og:description" content="Organize seu orçamento e acompanhe suas despesas mensais. 100% gratuito e local." />
   <meta property="og:image" content="https://despertmax.com.br/logo.svg" />
   <meta property="og:url" content="https://despertmax.com.br/simuladores/controle-gastos.html" />
   <meta property="og:type" content="website" />
-
   <link rel="icon" href="../logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -44,9 +42,12 @@
     input, select { width: 100%; background: var(--bg); border: 1px solid var(--secondary); color: var(--text); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.95rem; font-family: var(--font); }
     input:focus, select:focus { outline: none; border-color: var(--primary); }
     .row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem; align-items: end; }
-    @media(max-width: 640px) { .row { grid-template-columns: 1fr 1fr; } }
-    .btn { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1.25rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: var(--font); transition: background 0.2s; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+    @media(max-width: 640px) { .row { grid-template-columns: 1fr 1fr; } .row-2 { grid-template-columns: 1fr; } }
+    .btn { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1.25rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: var(--font); transition: background 0.2s; white-space: nowrap; }
     .btn:hover { background: #2563eb; }
+    .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 8px; padding: 0.55rem 1.1rem; font-weight: 700; font-size: 0.88rem; cursor: pointer; font-family: var(--font); transition: background 0.2s, color 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-outline:hover { background: var(--primary); color: #fff; }
     .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 6px; padding: 0.3rem 0.7rem; font-size: 0.8rem; cursor: pointer; font-family: var(--font); transition: background 0.2s; }
     .btn-danger:hover { background: var(--danger); color: #fff; }
     .resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
@@ -66,15 +67,45 @@
     .empty { text-align: center; color: var(--muted); padding: 2rem; font-size: 0.9rem; }
     .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.85rem; font-weight: 600; text-decoration: none; padding: 6px 14px; border: 1px solid var(--secondary); border-radius: 8px; transition: color .2s, border-color .2s; }
     .back-btn:hover { color: var(--primary); border-color: var(--primary); }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 0.75rem; flex-wrap: wrap; }
+
+    /* ── Estilos de impressão / PDF ── */
+    @media print {
+      body { background: #fff !important; color: #111 !important; }
+      .no-print, .back-btn, footer, .btn, .btn-outline, .btn-danger, .btn-danger { display: none !important; }
+      .card { background: #fff !important; border: 1px solid #ddd !important; box-shadow: none !important; }
+      .resumo-item { background: #f9f9f9 !important; border: 1px solid #ddd !important; }
+      .val.receita { color: #16a34a !important; }
+      .val.despesa { color: #dc2626 !important; }
+      .val.saldo-pos { color: #16a34a !important; }
+      .val.saldo-neg { color: #dc2626 !important; }
+      th { color: #555 !important; border-bottom: 2px solid #ddd !important; }
+      td { border-bottom: 1px solid #eee !important; color: #111 !important; }
+      .tag-receita { background: #dcfce7 !important; color: #16a34a !important; }
+      .tag-despesa { background: #fee2e2 !important; color: #dc2626 !important; }
+      .print-header { display: block !important; }
+      h1 { color: #111 !important; }
+      .subtitle { color: #555 !important; }
+      input, select { border: none !important; background: transparent !important; color: #111 !important; }
+    }
+
+    .print-header {
+      display: none;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid #ddd;
+    }
+    .print-header h2 { font-size: 1.3rem; color: #111; }
+    .print-header p { font-size: 0.85rem; color: #555; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
 
-  <div style="padding: 0.75rem 1rem; max-width:900px; margin:0 auto;">
+  <div style="padding: 0.75rem 1rem; max-width:900px; margin:0 auto;" class="no-print">
     <a href="../index.html" class="back-btn">← Início</a>
   </div>
 
-  <header class="header">
+  <header class="header no-print">
     <img src="../logo.svg" class="logo" alt="DespertMax" />
     <div>
       <h1>Controle de Gastos</h1>
@@ -83,6 +114,27 @@
   </header>
 
   <main class="container">
+
+    <!-- Cabeçalho visível apenas na impressão -->
+    <div class="print-header" id="print-header">
+      <h2 id="print-titulo">Controle de Gastos</h2>
+      <p id="print-info"></p>
+    </div>
+
+    <!-- Identificação -->
+    <div class="card no-print">
+      <h2 style="font-size:1rem;margin-bottom:1rem;color:var(--muted);">Identificação</h2>
+      <div class="row-2">
+        <div>
+          <label for="nome-responsavel">Nome / Responsável</label>
+          <input type="text" id="nome-responsavel" placeholder="Ex: João Silva" />
+        </div>
+        <div>
+          <label for="nome-projeto">Projeto / Período</label>
+          <input type="text" id="nome-projeto" placeholder="Ex: Orçamento Familiar — Maio 2026" />
+        </div>
+      </div>
+    </div>
 
     <!-- Resumo -->
     <div class="resumo" id="resumo">
@@ -101,7 +153,7 @@
     </div>
 
     <!-- Formulário -->
-    <div class="card">
+    <div class="card no-print">
       <h2 style="font-size:1rem;margin-bottom:1rem;color:var(--muted);">Adicionar lançamento</h2>
       <div class="row">
         <div>
@@ -127,9 +179,14 @@
 
     <!-- Tabela -->
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div class="toolbar">
         <h2 style="font-size:1rem;color:var(--muted);">Lançamentos</h2>
-        <button class="btn-danger" onclick="limparTudo()">Limpar tudo</button>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+          <button class="btn-outline no-print" onclick="gerarPDF()">
+            🖨️ Imprimir / PDF
+          </button>
+          <button class="btn-danger no-print" onclick="limparTudo()">Limpar tudo</button>
+        </div>
       </div>
       <div id="tabela-container">
         <p class="empty">Nenhum lançamento ainda. Adicione receitas ou despesas acima.</p>
@@ -138,7 +195,7 @@
 
   </main>
 
-  <footer style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--secondary);margin-top:1rem;">
+  <footer style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--secondary);margin-top:1rem;" class="no-print">
     © <span id="ano"></span> DespertMax — Dados armazenados apenas no seu navegador.
   </footer>
 
@@ -146,10 +203,18 @@
     document.getElementById('ano').textContent = new Date().getFullYear();
 
     let lancamentos = JSON.parse(localStorage.getItem('despertmax_gastos') || '[]');
+    const nomeResponsavel = localStorage.getItem('despertmax_gastos_nome') || '';
+    const nomeProjeto = localStorage.getItem('despertmax_gastos_projeto') || '';
 
-    function salvar() {
-      localStorage.setItem('despertmax_gastos', JSON.stringify(lancamentos));
-    }
+    if (nomeResponsavel) document.getElementById('nome-responsavel').value = nomeResponsavel;
+    if (nomeProjeto) document.getElementById('nome-projeto').value = nomeProjeto;
+
+    document.getElementById('nome-responsavel').addEventListener('input', function() {
+      localStorage.setItem('despertmax_gastos_nome', this.value);
+    });
+    document.getElementById('nome-projeto').addEventListener('input', function() {
+      localStorage.setItem('despertmax_gastos_projeto', this.value);
+    });
 
     function fmt(v) {
       return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -180,12 +245,12 @@
           <td style="font-weight:600;color:${l.tipo === 'receita' ? 'var(--success)' : 'var(--danger)'}">
             ${l.tipo === 'despesa' ? '- ' : '+ '}${fmt(l.valor)}
           </td>
-          <td><button class="btn-danger" onclick="remover(${idx})">✕</button></td>
+          <td class="no-print"><button class="btn-danger" onclick="remover(${idx})">✕</button></td>
         </tr>`;
       }).join('');
 
       container.innerHTML = `<table>
-        <thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
+        <thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th><th class="no-print"></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     }
@@ -217,6 +282,33 @@
         salvar();
         atualizar();
       }
+    }
+
+    function salvar() {
+      localStorage.setItem('despertmax_gastos', JSON.stringify(lancamentos));
+    }
+
+    function gerarPDF() {
+      // Preenche o cabeçalho de impressão com nome e projeto
+      const nome = document.getElementById('nome-responsavel').value.trim();
+      const projeto = document.getElementById('nome-projeto').value.trim();
+      const titulo = projeto || 'Controle de Gastos';
+      let info = '';
+      if (nome) info += `Responsável: ${nome}`;
+      if (nome && projeto) info += '  •  ';
+      if (projeto) info += `Projeto/Período: ${projeto}`;
+      info += `  •  Gerado em: ${new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' })}`;
+
+      document.getElementById('print-titulo').textContent = titulo;
+      document.getElementById('print-info').textContent = info;
+      document.getElementById('print-header').style.display = 'block';
+
+      window.print();
+
+      // Oculta cabeçalho de impressão novamente após imprimir
+      setTimeout(() => {
+        document.getElementById('print-header').style.display = 'none';
+      }, 1000);
     }
 
     atualizar();

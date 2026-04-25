@@ -383,31 +383,42 @@ function attachPercentMask(
  * e retorna APENAS o mapa filtrado para o período relevante.
  */
 async function obterTRMensalMapa(dataInicial, dataFinal) {
-  // A URL aponta para o seu arquivo de cache local
+  // A URL aponta para o arquivo de cache local (CSV separado por ponto e vírgula)
   const urlCache = 'tr_historico_cache.json';
-  
-  // O fetch pode falhar se o arquivo não existir.
+
   const resp = await fetch(urlCache);
   if (!resp.ok) {
     throw new Error(`Erro ao carregar o cache TR. Verifique se ${urlCache} existe.`);
   }
 
-  const dadosHistoricos = await resp.json(); // Ex: { "2015-11": 0.001867, ... }
+  // O arquivo é CSV (não JSON), então lemos como texto e parseamos manualmente
+  const textoHistorico = await resp.text();
+  const linhas = textoHistorico.split('\n');
   const mapaFiltrado = {};
-  
-  // Convertemos as datas de referência para o formato de comparação
+
   const dataInicioTs = dataInicial.getTime();
-  const dataFinalTs = dataFinal.getTime();
+  const dataFinalTs  = dataFinal.getTime();
 
-  // Filtra o cache para o período que o cálculo realmente precisa.
-  for (const chave in dadosHistoricos) {
-    // Chave é "AAAA-MM"
-    const [ano, mes] = chave.split('-').map(Number);
-    // Cria um objeto Date para o primeiro dia do mês na chave (UTC)
-    const dataChave = new Date(Date.UTC(ano, mes - 1, 1)); 
+  for (const linha of linhas) {
+    const partes = linha.trim().split(';');
+    if (partes.length < 3) continue;
 
+    const [dataInicioStr, , trStr] = partes;
+    const trDecimal = parseBRNumber(trStr) / 100;
+    if (isNaN(trDecimal) || trDecimal === 0) continue;
+
+    const dataParts = dataInicioStr.split('/');
+    if (dataParts.length !== 3) continue;
+
+    const [dia, mes, ano] = dataParts.map(Number);
+    if (!dia || !mes || !ano) continue;
+
+    const dataChave = new Date(Date.UTC(ano, mes - 1, dia));
     if (dataChave.getTime() >= dataInicioTs && dataChave.getTime() <= dataFinalTs) {
-      mapaFiltrado[chave] = dadosHistoricos[chave];
+      const chaveMes = `${dataChave.getUTCFullYear()}-${String(dataChave.getUTCMonth() + 1).padStart(2, '0')}`;
+      if (mapaFiltrado[chaveMes] === undefined) {
+        mapaFiltrado[chaveMes] = trDecimal;
+      }
     }
   }
 
