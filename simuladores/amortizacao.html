@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Simplão Invest • Amortização de Financiamentos</title>
+  <title>Simulador de Amortização — DespertMax</title>
   <meta name="description" content="Simule financiamentos com SAC e PRICE, extras por data, extra mensal e exportação CSV/PDF.">
   <meta name="keywords" content="simulador amortização, price, sac, financiamento, cálculo de parcelas, saldo devedor">
   <meta name="robots" content="index, follow">
 
-  <meta property="og:title" content="Simulador de Amortização • Simplão Invest">
-  <meta property="og:description" content="Compare SAC e PRICE, amortizações extras, extra mensal e gráfico anual.">
-  <meta property="og:url" content="https://www.calcularinvestimento.com.br/amortizacao.html">
-  <meta property="og:image" content="https://www.calcularinvestimento.com.br/logo.png">
+  <meta property="og:title" content="Simulador de Amortização — DespertMax">
+  <meta property="og:description" content="Compare SAC e PRICE, simule amortizações extras e exporte o resultado. 100% gratuito.">
+  <meta property="og:url" content="https://despertmax.com.br/simuladores/amortizacao.html">
+  <meta property="og:image" content="https://despertmax.com.br/logo.svg">
   <meta property="og:type" content="website">
 
   <style>
@@ -104,9 +104,24 @@
 
     footer{ text-align:center; color:var(--muted); margin:16px 0 10px; }
   </style>
+  <link rel="icon" href="../logo.svg" type="image/svg+xml">
 </head>
 
  <body>
+  <!-- Navegação de volta -->
+  <div style="position:fixed;top:12px;left:12px;z-index:999;">
+    <a href="../index.html"
+       style="display:inline-flex;align-items:center;gap:6px;
+              color:#94a3b8;font-size:0.8rem;font-weight:600;
+              text-decoration:none;padding:6px 12px;
+              border:1px solid #1e293b;border-radius:8px;
+              background:#0b1220;transition:color .2s,border-color .2s;"
+       onmouseover="this.style.color='#3b82f6';this.style.borderColor='#3b82f6'"
+       onmouseout="this.style.color='#94a3b8';this.style.borderColor='#1e293b'">
+      ← Início
+    </a>
+  </div>
+
    <a href="https://www.despertmax.com.br/index.html" 
       class="btn-home-floating" 
       aria-label="Voltar para a página inicial">🏠</a>
@@ -247,7 +262,7 @@
 </main>
 
 <footer class="container">
-  © <span id="ano"></span> Simplão Invest — Ferramentas financeiras gratuitas.
+  © <span id="ano"></span> DespertMax — Ferramentas financeiras gratuitas.
 </footer>
 
 <script>

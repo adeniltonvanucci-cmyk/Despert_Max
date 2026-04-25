@@ -10,7 +10,6 @@
   --color-muted: #94a3b8;
 
   --font-sans: 'Inter', system-ui, -apple-system, Arial, sans-serif;
-
   --spacing-base: 1rem;
   --radius-default: 0.75rem;
 }
@@ -50,6 +49,9 @@ body {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 1px solid var(--color-secondary);
+  padding-bottom: 1.25rem;
 }
 
 .brand {
@@ -72,14 +74,14 @@ body {
    NAVEGAÇÃO
 ============================ */
 .nav {
-  margin-top: 1rem;
+  margin-top: 0;
 }
 
 .nav-list {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.25rem;
   padding: 0;
 }
 
@@ -87,7 +89,8 @@ body {
   color: var(--color-text-light);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.3s ease;
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
 }
 
 .nav-list a:hover {
@@ -99,17 +102,61 @@ body {
 ============================ */
 .hero {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3.5rem 1rem 2rem;
 }
 
 .hero h2 {
   font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .hero .subtitle {
   font-size: 1.125rem;
+  margin-bottom: 1.75rem;
+}
+
+/* ============================
+   BOTÃO CTA
+============================ */
+.btn-cta {
+  display: inline-block;
+  background-color: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius-default);
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+}
+
+.btn-cta:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* ============================
+   BOTÃO VOLTAR AO INÍCIO
+============================ */
+.btn-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--color-secondary);
+  border-radius: calc(var(--radius-default) / 2);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-home:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 /* ============================
@@ -135,16 +182,7 @@ body {
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
-<nav class="nav">
-  <ul class="nav-list">
-    <li><a href="index.html" class="btn-home">🏠 Início</a></li>
-    <li><a href="sobre_nos.html">Sobre Nós</a></li>
-    <li><a href="guia-investimentos.html">Guia de Investimentos</a></li>
-    <li><a href="termos.html">Termos</a></li>
-    <li><a href="politica-privacidade.html">Privacidade</a></li>
-    <li><a href="simuladores/investimento.html">Privacidade</a></li>
-  </ul>
-</nav>
+
 .card:hover {
   transform: translateY(-6px);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
@@ -219,6 +257,3 @@ body {
     grid-template-columns: 1fr;
   }
 }
-
-
-

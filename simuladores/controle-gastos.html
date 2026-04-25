@@ -1,1 +1,225 @@
-<h1>Controle de Gastos</h1>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle de Gastos — DespertMax</title>
+  <meta name="description" content="Organize seu orçamento, registre despesas e receitas e acompanhe seu saldo mensalmente. 100% gratuito." />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="DespertMax" />
+
+  <meta property="og:title" content="Controle de Gastos — DespertMax" />
+  <meta property="og:description" content="Organize seu orçamento e acompanhe suas despesas mensais. 100% gratuito e local." />
+  <meta property="og:image" content="https://despertmax.com.br/logo.svg" />
+  <meta property="og:url" content="https://despertmax.com.br/simuladores/controle-gastos.html" />
+  <meta property="og:type" content="website" />
+
+  <link rel="icon" href="../logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #111827;
+      --text: #f3f4f6;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --secondary: #1e293b;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --radius: 0.75rem;
+      --font: 'Inter', system-ui, Arial, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.6; }
+    .container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+    h1 { font-size: 1.6rem; font-weight: 700; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-top: 0.25rem; }
+    .header { display: flex; align-items: center; gap: 1rem; padding: 1.5rem 1rem; border-bottom: 1px solid var(--secondary); max-width: 900px; margin: 0 auto; }
+    .logo { width: 44px; height: 44px; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--secondary); margin-bottom: 1.25rem; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-bottom: 0.4rem; }
+    input, select { width: 100%; background: var(--bg); border: 1px solid var(--secondary); color: var(--text); border-radius: 8px; padding: 0.6rem 0.75rem; font-size: 0.95rem; font-family: var(--font); }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
+    .row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem; align-items: end; }
+    @media(max-width: 640px) { .row { grid-template-columns: 1fr 1fr; } }
+    .btn { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1.25rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; font-family: var(--font); transition: background 0.2s; }
+    .btn:hover { background: #2563eb; }
+    .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 6px; padding: 0.3rem 0.7rem; font-size: 0.8rem; cursor: pointer; font-family: var(--font); transition: background 0.2s; }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+    @media(max-width: 600px) { .resumo { grid-template-columns: 1fr; } }
+    .resumo-item { background: var(--card); border-radius: var(--radius); padding: 1rem 1.25rem; border: 1px solid var(--secondary); text-align: center; }
+    .resumo-item .val { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+    .val.receita { color: var(--success); }
+    .val.despesa { color: var(--danger); }
+    .val.saldo-pos { color: var(--success); }
+    .val.saldo-neg { color: var(--danger); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { text-align: left; color: var(--muted); font-weight: 600; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--secondary); }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(30,41,59,0.5); }
+    .tag { display: inline-block; font-size: 0.75rem; padding: 2px 10px; border-radius: 99px; font-weight: 600; }
+    .tag-receita { background: rgba(34,197,94,0.15); color: var(--success); }
+    .tag-despesa { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .empty { text-align: center; color: var(--muted); padding: 2rem; font-size: 0.9rem; }
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.85rem; font-weight: 600; text-decoration: none; padding: 6px 14px; border: 1px solid var(--secondary); border-radius: 8px; transition: color .2s, border-color .2s; }
+    .back-btn:hover { color: var(--primary); border-color: var(--primary); }
+  </style>
+</head>
+<body>
+
+  <div style="padding: 0.75rem 1rem; max-width:900px; margin:0 auto;">
+    <a href="../index.html" class="back-btn">← Início</a>
+  </div>
+
+  <header class="header">
+    <img src="../logo.svg" class="logo" alt="DespertMax" />
+    <div>
+      <h1>Controle de Gastos</h1>
+      <p class="subtitle">DespertMax — registre receitas e despesas, veja seu saldo.</p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Resumo -->
+    <div class="resumo" id="resumo">
+      <div class="resumo-item">
+        <div style="color:var(--muted);font-size:.85rem;">Receitas</div>
+        <div class="val receita" id="total-receitas">R$ 0,00</div>
+      </div>
+      <div class="resumo-item">
+        <div style="color:var(--muted);font-size:.85rem;">Despesas</div>
+        <div class="val despesa" id="total-despesas">R$ 0,00</div>
+      </div>
+      <div class="resumo-item">
+        <div style="color:var(--muted);font-size:.85rem;">Saldo</div>
+        <div class="val" id="saldo">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="card">
+      <h2 style="font-size:1rem;margin-bottom:1rem;color:var(--muted);">Adicionar lançamento</h2>
+      <div class="row">
+        <div>
+          <label for="desc">Descrição</label>
+          <input type="text" id="desc" placeholder="Ex: Supermercado" />
+        </div>
+        <div>
+          <label for="valor">Valor (R$)</label>
+          <input type="number" id="valor" min="0" step="0.01" placeholder="0,00" />
+        </div>
+        <div>
+          <label for="tipo">Tipo</label>
+          <select id="tipo">
+            <option value="despesa">💸 Despesa</option>
+            <option value="receita">💚 Receita</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn" onclick="adicionarLancamento()">Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h2 style="font-size:1rem;color:var(--muted);">Lançamentos</h2>
+        <button class="btn-danger" onclick="limparTudo()">Limpar tudo</button>
+      </div>
+      <div id="tabela-container">
+        <p class="empty">Nenhum lançamento ainda. Adicione receitas ou despesas acima.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--secondary);margin-top:1rem;">
+    © <span id="ano"></span> DespertMax — Dados armazenados apenas no seu navegador.
+  </footer>
+
+  <script>
+    document.getElementById('ano').textContent = new Date().getFullYear();
+
+    let lancamentos = JSON.parse(localStorage.getItem('despertmax_gastos') || '[]');
+
+    function salvar() {
+      localStorage.setItem('despertmax_gastos', JSON.stringify(lancamentos));
+    }
+
+    function fmt(v) {
+      return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function atualizar() {
+      const receitas = lancamentos.filter(l => l.tipo === 'receita').reduce((s, l) => s + l.valor, 0);
+      const despesas = lancamentos.filter(l => l.tipo === 'despesa').reduce((s, l) => s + l.valor, 0);
+      const saldo = receitas - despesas;
+
+      document.getElementById('total-receitas').textContent = fmt(receitas);
+      document.getElementById('total-despesas').textContent = fmt(despesas);
+      const saldoEl = document.getElementById('saldo');
+      saldoEl.textContent = fmt(saldo);
+      saldoEl.className = 'val ' + (saldo >= 0 ? 'saldo-pos' : 'saldo-neg');
+
+      const container = document.getElementById('tabela-container');
+      if (lancamentos.length === 0) {
+        container.innerHTML = '<p class="empty">Nenhum lançamento ainda. Adicione receitas ou despesas acima.</p>';
+        return;
+      }
+
+      const rows = [...lancamentos].reverse().map((l, i) => {
+        const idx = lancamentos.length - 1 - i;
+        return `<tr>
+          <td>${l.desc}</td>
+          <td><span class="tag tag-${l.tipo}">${l.tipo === 'receita' ? '💚 Receita' : '💸 Despesa'}</span></td>
+          <td style="font-weight:600;color:${l.tipo === 'receita' ? 'var(--success)' : 'var(--danger)'}">
+            ${l.tipo === 'despesa' ? '- ' : '+ '}${fmt(l.valor)}
+          </td>
+          <td><button class="btn-danger" onclick="remover(${idx})">✕</button></td>
+        </tr>`;
+      }).join('');
+
+      container.innerHTML = `<table>
+        <thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function adicionarLancamento() {
+      const desc = document.getElementById('desc').value.trim();
+      const valor = parseFloat(document.getElementById('valor').value);
+      const tipo = document.getElementById('tipo').value;
+      if (!desc || isNaN(valor) || valor <= 0) {
+        alert('Preencha a descrição e um valor válido.');
+        return;
+      }
+      lancamentos.push({ desc, valor, tipo });
+      salvar();
+      atualizar();
+      document.getElementById('desc').value = '';
+      document.getElementById('valor').value = '';
+    }
+
+    function remover(idx) {
+      lancamentos.splice(idx, 1);
+      salvar();
+      atualizar();
+    }
+
+    function limparTudo() {
+      if (confirm('Tem certeza? Todos os lançamentos serão removidos.')) {
+        lancamentos = [];
+        salvar();
+        atualizar();
+      }
+    }
+
+    atualizar();
+  </script>
+</body>
+</html>
